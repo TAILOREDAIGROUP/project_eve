@@ -5,8 +5,9 @@ import { ChatInterface } from '@/components/chat-interface';
 import { QuickActions } from '@/components/quick-actions';
 
 export default function DashboardPage() {
-    // Hardcoded Tenant ID for Phase 2 demo
     const TENANT_ID = "550e8400-e29b-41d4-a716-446655440000";
+
+    // Restore the missing state logic
     const [chatTrigger, setChatTrigger] = useState<string | null>(null);
 
     const handleQuickAction = (prompt: string) => {
@@ -20,7 +21,7 @@ export default function DashboardPage() {
                 <p className="text-lg text-slate-500">Ready to analyze the latest intelligence?</p>
             </div>
 
-            <div className="flex-1 flex flex-col gap-8 min-h-0">
+            <div className="flex-1 flex flex-col gap-6 min-h-0">
                 <div className="flex-none">
                     <QuickActions onAction={handleQuickAction} />
                 </div>
