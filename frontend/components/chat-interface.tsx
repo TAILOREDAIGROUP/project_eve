@@ -4,9 +4,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Bot, User, FileText, Loader2 } from 'lucide-react';
+import { Send, Bot, User, FileText, Loader2, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { QuickActions } from './quick-actions';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Message {
     role: 'user' | 'assistant';
@@ -17,6 +23,13 @@ interface Message {
 interface ChatInterfaceProps {
     tenantId: string;
 }
+
+const PRESET_PROMPTS = [
+    "What is the maximum daily meal allowance?",
+    "Does this policy cover international travel insurance?",
+    "List all reimbursable expenses mentioned.",
+    "Draft a rejection email for this receipt based on the policy."
+];
 
 export function ChatInterface({ tenantId }: ChatInterfaceProps) {
     const [messages, setMessages] = useState<Message[]>([
@@ -30,57 +43,81 @@ export function ChatInterface({ tenantId }: ChatInterfaceProps) {
         if (scrollRef.current) {
             scrollRef.current.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [messages]);
+    }, [messages, loading]);
 
-    const handleSend = async () => {
-        if (!input.trim() || loading) return;
+    const handleSend = async (textOverride?: string) => {
+        const textToSend = textOverride || input;
 
-        const userMsg: Message = { role: 'user', content: input };
+        if (!textToSend.trim() || loading) return;
+
+        const userMsg: Message = { role: 'user', content: textToSend };
         setMessages(prev => [...prev, userMsg]);
         setInput('');
         setLoading(true);
 
         try {
-            const res = await fetch('http://localhost:8000/api/v1/chat', {
+            const res = await fetch('http://localhost:3000/api/chat', { // Updated to relative path if running on same origin or properly proxying
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    query: userMsg.content,
-                    tenant_id: tenantId,
-                    history: [] // We could pass previous messages here for context
+                    messages: [userMsg], // Adjusted to match standard Vercel AI SDK pattern or our custom route
+                    tenant_id: tenantId
                 })
             });
 
-            if (!res.ok) throw new Error("Failed to fetch response");
+            if (!res.ok) {
+                const errorText = await res.text();
+                throw new Error(errorText || "Failed to fetch response");
+            }
 
-            const data = await res.json();
+            // Stream Handling
+            const reader = res.body?.getReader();
+            const decoder = new TextDecoder();
+            let botContent = '';
 
-            const botMsg: Message = {
-                role: 'assistant',
-                content: data.answer,
-                citations: data.citations
-            };
+            setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
 
-            setMessages(prev => [...prev, botMsg]);
-        } catch (error) {
+            while (reader) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                botContent += chunk;
+
+                setMessages(prev => {
+                    const newMsgs = [...prev];
+                    const lastMsg = newMsgs[newMsgs.length - 1];
+                    lastMsg.content = botContent;
+                    return newMsgs;
+                });
+            }
+
+        } catch (error: any) {
             console.error(error);
-            setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error retrieving that information.' }]);
+            // Show actual error in UI for debugging as requested
+            setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${error.message || 'Something went wrong.'}` }]);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <Card className="h-[600px] flex flex-col">
-            <CardHeader className="px-6 py-4 border-b">
-                <CardTitle className="flex items-center gap-2">
-                    <Bot className="h-5 w-5 text-primary" />
+        <Card className="h-[600px] flex flex-col bg-slate-50 border-slate-200 shadow-md">
+            <CardHeader className="px-6 py-4 border-b bg-white rounded-t-lg">
+                <CardTitle className="flex items-center gap-2 text-slate-800">
+                    <Bot className="h-5 w-5 text-indigo-600" />
                     AI Research Assistant
                 </CardTitle>
             </CardHeader>
 
-            <CardContent className="flex-1 p-0 overflow-hidden flex flex-col">
+            <CardContent className="flex-1 p-0 overflow-hidden flex flex-col relative">
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                    {messages.length === 1 && (
+                        <div className="mt-8 px-4">
+                            <QuickActions onAction={(prompt) => handleSend(prompt)} />
+                        </div>
+                    )}
+
                     {messages.map((msg, idx) => (
                         <div
                             key={idx}
@@ -90,50 +127,39 @@ export function ChatInterface({ tenantId }: ChatInterfaceProps) {
                             )}
                         >
                             <div className={cn(
-                                "flex gap-3 max-w-[80%]",
+                                "flex gap-3 max-w-[85%]",
                                 msg.role === 'user' ? "flex-row-reverse" : "flex-row"
                             )}>
                                 <div className={cn(
-                                    "h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0",
-                                    msg.role === 'user' ? "bg-blue-600" : "bg-muted"
+                                    "h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm",
+                                    msg.role === 'user' ? "bg-indigo-600" : "bg-white border border-slate-200"
                                 )}>
-                                    {msg.role === 'user' ? <User className="h-5 w-5 text-white" /> : <Bot className="h-5 w-5" />}
+                                    {msg.role === 'user' ? <User className="h-5 w-5 text-white" /> : <Bot className="h-5 w-5 text-indigo-600" />}
                                 </div>
 
                                 <div className="space-y-2">
                                     <div className={cn(
-                                        "p-4 rounded-2xl text-sm leading-relaxed",
+                                        "p-4 rounded-2xl text-sm leading-relaxed shadow-sm",
                                         msg.role === 'user'
-                                            ? "bg-blue-600 text-white rounded-tr-none"
-                                            : "bg-muted text-foreground rounded-tl-none"
+                                            ? "bg-indigo-600 text-white rounded-tr-none"
+                                            : "bg-white text-slate-800 border border-slate-100 rounded-tl-none"
                                     )}>
                                         {msg.content}
                                     </div>
-
-                                    {/* Citations */}
-                                    {msg.citations && msg.citations.length > 0 && (
-                                        <div className="flex flex-wrap gap-2 mt-2">
-                                            {msg.citations.map((cite, i) => (
-                                                <div key={i} className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md text-xs font-medium border border-blue-100">
-                                                    <FileText className="h-3 w-3" />
-                                                    {cite}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </div>
                     ))}
+
                     {loading && (
-                        <div className="flex w-full justify-start">
+                        <div className="flex w-full justify-start animate-pulse">
                             <div className="flex gap-3 max-w-[80%]">
-                                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                                    <Bot className="h-5 w-5" />
+                                <div className="h-8 w-8 rounded-full bg-white border border-slate-200 flex items-center justify-center">
+                                    <Bot className="h-5 w-5 text-indigo-600" />
                                 </div>
-                                <div className="bg-muted p-4 rounded-2xl rounded-tl-none flex items-center gap-2">
-                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                    <span className="text-sm text-muted-foreground">Thinking...</span>
+                                <div className="bg-white p-4 rounded-2xl rounded-tl-none flex items-center gap-2 border border-slate-100">
+                                    <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
+                                    <span className="text-sm text-slate-500">Thinking...</span>
                                 </div>
                             </div>
                         </div>
@@ -142,19 +168,34 @@ export function ChatInterface({ tenantId }: ChatInterfaceProps) {
                 </div>
 
                 {/* Input Area */}
-                <div className="p-4 border-t bg-background">
+                <div className="p-4 border-t bg-white">
                     <form
                         onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-                        className="flex gap-2"
+                        className="flex gap-2 relative"
                     >
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-amber-500 hover:text-amber-600 hover:bg-amber-50">
+                                    <Zap className="h-5 w-5" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-[300px]">
+                                {PRESET_PROMPTS.map((prompt, i) => (
+                                    <DropdownMenuItem key={i} onClick={() => setInput(prompt)}>
+                                        {prompt}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
                         <Input
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             placeholder="Ask a question about your documents..."
-                            className="flex-1"
+                            className="flex-1 bg-slate-50 border-slate-200 focus-visible:ring-indigo-500"
                             disabled={loading}
                         />
-                        <Button type="submit" disabled={loading || !input.trim()}>
+                        <Button type="submit" disabled={loading || !input.trim()} className="bg-indigo-600 hover:bg-indigo-700">
                             <Send className="h-4 w-4" />
                             <span className="sr-only">Send</span>
                         </Button>
