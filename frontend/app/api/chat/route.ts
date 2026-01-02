@@ -3,16 +3,16 @@ import { OpenAI } from 'openai';
 import { retrieveContext } from '@/lib/rag';
 import { getUserMemories, saveUserMemory } from '@/lib/memory';
 
-// Initialize OpenAI client with OpenRouter configuration
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-    baseURL: process.env.OPENAI_BASE_URL,
-});
-
 export const runtime = 'edge';
 
 export async function POST(req: Request) {
     try {
+        // Initialize OpenAI client with OpenRouter configuration at runtime
+        const openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY,
+            baseURL: process.env.OPENAI_BASE_URL,
+        });
+
         const { messages, tenant_id } = await req.json();
         const lastMessage = messages[messages.length - 1];
         const userQuery = lastMessage.content;
