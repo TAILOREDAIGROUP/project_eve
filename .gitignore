@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+__pycache__/
+.venv/
+venv/
+.env
+
+# Next.js
+.next/
+out/
+build/
+
+# System
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Agent
+.gemini/
