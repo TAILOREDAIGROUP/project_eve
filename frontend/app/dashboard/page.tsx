@@ -6,15 +6,22 @@ import { KnowledgeBase } from '@/components/knowledge-base';
 import { ChatInterface } from '@/components/chat-interface';
 import { KnowledgeGraph } from '@/components/knowledge-graph';
 import { UsageMeter } from '@/components/usage-meter';
+import { QuickActions } from '@/components/quick-actions';
 import { LayoutDashboard, Database, Settings } from 'lucide-react';
 
 export default function DashboardPage() {
     // Hardcoded Tenant ID for Phase 2 demo
     const TENANT_ID = "550e8400-e29b-41d4-a716-446655440000";
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [refreshTrigger, setRefreshTrigger] = useState(0);
+    const [chatTrigger, setChatTrigger] = useState<string | null>(null);
 
     const handleUploadComplete = () => {
         setRefreshTrigger(prev => prev + 1);
+    };
+
+    const handleQuickAction = (prompt: string) => {
+        setChatTrigger(prompt);
     };
 
     return (
@@ -58,12 +65,13 @@ export default function DashboardPage() {
 
                     {/* Middle Row: Content List */}
                     <div className="col-span-2 lg:col-span-3">
-                        <KnowledgeBase tenantId={TENANT_ID} refreshTrigger={refreshTrigger} />
+                        <KnowledgeBase tenantId={TENANT_ID} />
                     </div>
 
                     {/* Bottom Row: Chat */}
-                    <div className="col-span-2 lg:col-span-3">
-                        <ChatInterface tenantId={TENANT_ID} />
+                    <div className="col-span-2 lg:col-span-3 flex flex-col gap-6">
+                        <QuickActions onAction={handleQuickAction} />
+                        <ChatInterface tenantId={TENANT_ID} externalTrigger={chatTrigger} />
                     </div>
                 </div>
             </main>

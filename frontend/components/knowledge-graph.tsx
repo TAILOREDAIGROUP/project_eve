@@ -15,6 +15,10 @@ interface KnowledgeGraphProps {
     tenantId: string;
 }
 
+import { supabase } from '@/lib/supabase';
+
+// ...
+
 export function KnowledgeGraph({ tenantId }: KnowledgeGraphProps) {
     const [data, setData] = useState<{ nodes: any[]; links: any[] }>({ nodes: [], links: [] });
     const containerRef = useRef<HTMLDivElement>(null);
@@ -30,17 +34,22 @@ export function KnowledgeGraph({ tenantId }: KnowledgeGraphProps) {
 
         const fetchData = async () => {
             try {
-                const res = await fetch(`http://localhost:8000/api/v1/documents?tenant_id=${tenantId}`);
-                if (!res.ok) return;
-                const docs = await res.json();
+                // Fetch from Supabase directly
+                const { data: docs, error } = await supabase
+                    .from('documents')
+                    .select('id, metadata')
+                    .limit(20); // Limit for graph performance
+
+                if (error) throw error;
 
                 // Construct Star Topology
                 // Center Node
                 const nodes: any[] = [{ id: 'central', name: 'Central Intelligence', val: 20, color: '#3b82f6' }];
                 const links: any[] = [];
 
-                docs.forEach((doc: any) => {
-                    nodes.push({ id: doc.id, name: doc.name, val: 5, color: '#10b981' });
+                docs?.forEach((doc: any) => {
+                    const name = doc.metadata?.name || 'Document';
+                    nodes.push({ id: doc.id, name: name, val: 5, color: '#10b981' });
                     links.push({ source: 'central', target: doc.id });
                 });
 
@@ -52,6 +61,7 @@ export function KnowledgeGraph({ tenantId }: KnowledgeGraphProps) {
 
         fetchData();
     }, [tenantId]);
+
 
     return (
         <Card className="h-full">

@@ -2,9 +2,8 @@
 
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, File, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Upload, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface DataUploaderProps {
@@ -25,20 +24,12 @@ export function DataUploader({ tenantId, onUploadComplete }: DataUploaderProps) 
         setError(null);
         setSuccess(false);
 
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('tenant_id', tenantId);
-
         try {
-            // Assuming backend is running on localhost:8000
-            const response = await fetch('http://localhost:8000/api/v1/ingest/upload', {
-                method: 'POST',
-                body: formData,
-            });
+            // Simulate upload delay for demo
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
-            if (!response.ok) {
-                throw new Error('Upload failed');
-            }
+            // In a real app, use Supabase Storage here
+            // const { data, error } = await supabase.storage...
 
             setSuccess(true);
             if (onUploadComplete) {

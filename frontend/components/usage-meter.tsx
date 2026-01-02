@@ -18,22 +18,12 @@ export function UsageMeter({ tenantId }: UsageMeterProps) {
     const [stats, setStats] = useState<UsageStats>({ total_tokens: 0, estimated_cost: 0, total_requests: 0 });
 
     useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const res = await fetch(`http://localhost:8000/api/v1/usage/stats?tenant_id=${tenantId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setStats(data);
-                }
-            } catch (e) {
-                console.error(e);
-            }
-        };
-
-        fetchStats();
-        // Poll every 5 seconds to show "Real-time" effect
-        const interval = setInterval(fetchStats, 5000);
-        return () => clearInterval(interval);
+        // Mock data for Vercel demo
+        setStats({
+            total_tokens: 1250,
+            estimated_cost: 0.0125,
+            total_requests: 42
+        });
     }, [tenantId]);
 
     const maxBudget = 5.00; // Demo budget $5

@@ -24,7 +24,11 @@ interface KnowledgeBaseProps {
     refreshTrigger?: number;
 }
 
-export function KnowledgeBase({ tenantId, refreshTrigger }: KnowledgeBaseProps) {
+import { supabase } from '@/lib/supabase';
+
+// ... imports
+
+export function KnowledgeBase({ tenantId }: KnowledgeBaseProps) { // removed refreshTrigger for now as simple fix
     const [documents, setDocuments] = useState<Document[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -32,11 +36,22 @@ export function KnowledgeBase({ tenantId, refreshTrigger }: KnowledgeBaseProps) 
         const fetchDocuments = async () => {
             setLoading(true);
             try {
-                const res = await fetch(`http://localhost:8000/api/v1/documents?tenant_id=${tenantId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setDocuments(data);
-                }
+                // Fetch from Supabase directly
+                const { data, error } = await supabase
+                    .from('documents')
+                    .select('id, metadata, created_at') // metadata usually contains 'name'
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                // Map Supabase structure to UI structure
+                const docs = data?.map((d: any) => ({
+                    id: d.id,
+                    name: d.metadata?.name || 'Untitled Document',
+                    created_at: d.created_at || new Date().toISOString()
+                })) || [];
+
+                setDocuments(docs);
             } catch (error) {
                 console.error("Failed to fetch documents", error);
             } finally {
@@ -45,7 +60,8 @@ export function KnowledgeBase({ tenantId, refreshTrigger }: KnowledgeBaseProps) 
         };
 
         fetchDocuments();
-    }, [tenantId, refreshTrigger]);
+    }, [tenantId]);
+
 
     return (
         <Card>

@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, Bot, User, FileText, Loader2, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { QuickActions } from './quick-actions';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -22,6 +21,7 @@ interface Message {
 
 interface ChatInterfaceProps {
     tenantId: string;
+    externalTrigger?: string | null;
 }
 
 const PRESET_PROMPTS = [
@@ -31,13 +31,22 @@ const PRESET_PROMPTS = [
     "Draft a rejection email for this receipt based on the policy."
 ];
 
-export function ChatInterface({ tenantId }: ChatInterfaceProps) {
+export function ChatInterface({ tenantId, externalTrigger }: ChatInterfaceProps) {
     const [messages, setMessages] = useState<Message[]>([
         { role: 'assistant', content: 'Hello! I am your research assistant. Ask me anything about your uploaded documents.' }
     ]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const hasTriggeredRef = useRef<string | null>(null);
+
+    // Watch for external trigger (QuickActions)
+    useEffect(() => {
+        if (externalTrigger && externalTrigger !== hasTriggeredRef.current) {
+            hasTriggeredRef.current = externalTrigger;
+            handleSend(externalTrigger);
+        }
+    }, [externalTrigger]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -56,11 +65,12 @@ export function ChatInterface({ tenantId }: ChatInterfaceProps) {
         setLoading(true);
 
         try {
-            const res = await fetch('http://localhost:3000/api/chat', { // Updated to relative path if running on same origin or properly proxying
+            // Updated to relative path
+            const res = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    messages: [userMsg], // Adjusted to match standard Vercel AI SDK pattern or our custom route
+                    messages: [...messages, userMsg], // Send history + new message
                     tenant_id: tenantId
                 })
             });
@@ -94,7 +104,6 @@ export function ChatInterface({ tenantId }: ChatInterfaceProps) {
 
         } catch (error: any) {
             console.error(error);
-            // Show actual error in UI for debugging as requested
             setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${error.message || 'Something went wrong.'}` }]);
         } finally {
             setLoading(false);
@@ -112,12 +121,6 @@ export function ChatInterface({ tenantId }: ChatInterfaceProps) {
 
             <CardContent className="flex-1 p-0 overflow-hidden flex flex-col relative">
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                    {messages.length === 1 && (
-                        <div className="mt-8 px-4">
-                            <QuickActions onAction={(prompt) => handleSend(prompt)} />
-                        </div>
-                    )}
-
                     {messages.map((msg, idx) => (
                         <div
                             key={idx}
@@ -146,6 +149,18 @@ export function ChatInterface({ tenantId }: ChatInterfaceProps) {
                                     )}>
                                         {msg.content}
                                     </div>
+
+                                    {/* Citations */}
+                                    {msg.citations && msg.citations.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                            {msg.citations.map((cite, i) => (
+                                                <div key={i} className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md text-xs font-medium border border-blue-100">
+                                                    <FileText className="h-3 w-3" />
+                                                    {cite}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
