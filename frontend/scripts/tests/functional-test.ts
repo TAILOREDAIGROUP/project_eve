@@ -23,6 +23,14 @@ async function runFunctionalTest() {
             chatFlowWorking = true;
             sessionId = response.headers.get('X-Session-Id');
             await response.text(); 
+        } else {
+            let errorDetails = '';
+            try {
+                errorDetails = JSON.stringify(await response.json());
+            } catch (e) {
+                errorDetails = await response.text();
+            }
+            console.error(`Chat flow failed with status ${response.status}: ${errorDetails}`);
         }
     } catch (e) {
         console.error('Chat flow failed:', e);

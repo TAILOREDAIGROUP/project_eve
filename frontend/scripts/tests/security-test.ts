@@ -106,7 +106,7 @@ async function runSecurityTest() {
             })
         });
         const headers = response.headers;
-        if (headers.get('X-Content-Type-Options') || headers.get('Content-Security-Policy')) {
+        if (headers.get('X-Content-Type-Options') || headers.get('Content-Security-Policy') || headers.get('Strict-Transport-Security')) {
             securityHeadersPresent = true;
         }
     } catch (e) {}

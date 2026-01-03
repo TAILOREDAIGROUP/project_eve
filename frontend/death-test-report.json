@@ -1,16 +1,16 @@
 {
-  "timestamp": "2026-01-03T14:28:50.293Z",
+  "timestamp": "2026-01-03T14:38:01.444Z",
   "score": 25,
   "status": "🔴 CRITICAL",
   "details": {
     "stress": {
       "name": "STRESS TEST",
       "successRate": 0,
-      "avgResponseTime": 0.34799151999999994,
+      "avgResponseTime": 0.4357233119999996,
       "rateLimitingWorking": true,
-      "p50": 340.5764,
-      "p95": 392.9768,
-      "p99": 567.7756999999999,
+      "p50": 423.7183,
+      "p95": 635.313,
+      "p99": 671.8665,
       "success": false
     },
     "security": {
@@ -18,7 +18,7 @@
       "promptInjectionScore": "10/10",
       "oversizedPayloadRejected": true,
       "malformedJsonRejected": true,
-      "securityHeadersPresent": false,
+      "securityHeadersPresent": true,
       "success": true
     },
     "failure": {
