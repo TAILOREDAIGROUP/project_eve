@@ -1,4 +1,3 @@
-import { supabase } from './supabase';
 import { OpenAI } from 'openai';
 
 const openai = new OpenAI({
@@ -8,30 +7,27 @@ const openai = new OpenAI({
 
 export async function retrieveContext(query: string) {
     try {
-        // 1. Generate Embedding
-        const embeddingResponse = await openai.embeddings.create({
-            model: 'text-embedding-3-small',
-            input: query,
+        // For Edge runtime compatibility, we'll delegate to backend API
+        // In production, this should call your Python backend's RAG endpoint
+        const backendUrl = process.env.BACKEND_API_URL || 'http://localhost:8000';
+
+        const response = await fetch(`${backendUrl}/api/v1/rag/retrieve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query }),
         });
 
-        const embedding = embeddingResponse.data[0].embedding;
-
-        // 2. Query Supabase
-        const { data: documents, error } = await supabase.rpc('match_documents', {
-            query_embedding: embedding,
-            match_threshold: 0.5, // Minimum similarity threshold
-            match_count: 5,
-        });
-
-        if (error) {
-            console.error('Supabase RAG Error:', error);
+        if (!response.ok) {
+            console.warn('RAG backend not available, continuing without document context');
             return [];
         }
 
-        return documents?.map((doc: any) => doc.content) || [];
+        const data = await response.json();
+        return data.chunks || [];
     } catch (error) {
         console.error('RAG Retrieval Failed:', error);
         // Fail gracefully by returning empty context rather than crashing
         return [];
     }
 }
+
