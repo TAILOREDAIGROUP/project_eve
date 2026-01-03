@@ -10,16 +10,16 @@ export function checkRateLimit(
   maxRequests: number = 20,
   windowMs: number = 60000
 ): { allowed: boolean; remaining: number; resetIn: number } {
-  // Simple in-memory store using global to persist in serverless environment (single instance)
-  if (!global.rateLimitStore) {
-    global.rateLimitStore = new Map();
+  // Simple in-memory store using globalThis to persist in serverless environment (single instance)
+  if (!globalThis.rateLimitStore) {
+    globalThis.rateLimitStore = new Map();
   }
 
   const now = Date.now();
-  const entry = global.rateLimitStore.get(identifier);
+  const entry = globalThis.rateLimitStore.get(identifier);
 
   if (!entry || now > entry.resetTime) {
-    global.rateLimitStore.set(identifier, { count: 1, resetTime: now + windowMs });
+    globalThis.rateLimitStore.set(identifier, { count: 1, resetTime: now + windowMs });
     return { allowed: true, remaining: maxRequests - 1, resetIn: windowMs };
   }
 

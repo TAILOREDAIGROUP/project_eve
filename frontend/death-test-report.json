@@ -1,17 +1,17 @@
 {
-  "timestamp": "2026-01-03T15:39:50.118Z",
-  "score": 75,
-  "status": "⚠️ CAUTION",
+  "timestamp": "2026-01-03T15:56:13.129Z",
+  "score": 25,
+  "status": "🔴 CRITICAL",
   "details": {
     "stress": {
       "name": "STRESS TEST",
-      "successRate": 100,
-      "avgResponseTime": 3.1545626699999993,
+      "successRate": 0,
+      "avgResponseTime": 2.7538017459999993,
       "rateLimitingWorking": false,
-      "p50": 3148.3039999999996,
-      "p95": 3362.4024999999997,
-      "p99": 4061.0312999999996,
-      "success": true
+      "p50": 2763.6621,
+      "p95": 3030.4198,
+      "p99": 3303.5433,
+      "success": false
     },
     "security": {
       "name": "SECURITY TEST",
@@ -23,16 +23,16 @@
     },
     "failure": {
       "name": "FAILURE TEST",
-      "invalidApiKeyHandled": false,
+      "invalidApiKeyHandled": true,
       "timeoutHandled": true,
-      "success": false
+      "success": true
     },
     "functional": {
       "name": "FUNCTIONAL TEST",
-      "chatFlowWorking": true,
-      "sessionIdReceived": true,
-      "memoryPersistenceWorking": true,
-      "success": true
+      "chatFlowWorking": false,
+      "sessionIdReceived": false,
+      "memoryPersistenceWorking": false,
+      "success": false
     }
   }
 }
