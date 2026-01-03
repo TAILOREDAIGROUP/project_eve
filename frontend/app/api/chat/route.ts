@@ -42,7 +42,7 @@ export async function POST(req: Request) {
         // STREAM RESPONSE
         // =====================================================================
         const result = await streamText({
-            model: openrouter('google/gemini-flash-1.5'), // Or your preferred model via OpenRouter
+            model: openrouter('google/gemini-2.0-flash-001'), // Or your preferred model via OpenRouter
             system: bootContext.systemPrompt,
             messages: messages.slice(-10), // Keep last 10 messages for context
             onFinish: async (event) => {
