@@ -1,0 +1,38 @@
+{
+  "timestamp": "2026-01-03T13:35:32.587Z",
+  "score": 25,
+  "status": "🔴 CRITICAL",
+  "details": {
+    "stress": {
+      "name": "STRESS TEST",
+      "successRate": 0,
+      "avgResponseTime": 0.28585946900000003,
+      "rateLimitingWorking": true,
+      "p50": 283.00890000000004,
+      "p95": 341.6011,
+      "p99": 368.03409999999997,
+      "success": false
+    },
+    "security": {
+      "name": "SECURITY TEST",
+      "promptInjectionScore": "10/10",
+      "oversizedPayloadRejected": true,
+      "malformedJsonRejected": true,
+      "securityHeadersPresent": false,
+      "success": true
+    },
+    "failure": {
+      "name": "FAILURE TEST",
+      "invalidApiKeyHandled": true,
+      "timeoutHandled": true,
+      "success": true
+    },
+    "functional": {
+      "name": "FUNCTIONAL TEST",
+      "chatFlowWorking": false,
+      "sessionIdReceived": false,
+      "memoryPersistenceWorking": false,
+      "success": false
+    }
+  }
+}
