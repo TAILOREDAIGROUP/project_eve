@@ -44,7 +44,7 @@ export function KnowledgeGraph({ tenantId }: KnowledgeGraphProps) {
 
                 // Construct Star Topology
                 // Center Node
-                const nodes: any[] = [{ id: 'central', name: 'Central Intelligence', val: 20, color: '#3b82f6' }];
+                const nodes: any[] = [{ id: 'central', name: 'EVE Core', val: 20, color: '#3b82f6' }];
                 const links: any[] = [];
 
                 docs?.forEach((doc: any) => {

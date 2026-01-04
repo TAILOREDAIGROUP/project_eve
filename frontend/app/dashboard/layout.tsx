@@ -12,7 +12,7 @@ export default function DashboardLayout({
             {/* Sidebar */}
             <aside className="w-64 border-r bg-muted/40 hidden md:block shrink-0">
                 <div className="p-6">
-                    <h1 className="text-xl font-bold tracking-tight">Central Intel</h1>
+                    <span className="text-2xl font-bold text-primary">EVE</span>
                 </div>
                 <nav className="space-y-1 px-4">
                     <Link href="/dashboard" className="flex items-center gap-3 rounded-lg hover:bg-muted px-3 py-2 text-foreground font-medium transition-colors">

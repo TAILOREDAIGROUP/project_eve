@@ -17,8 +17,8 @@ export default function DashboardPage() {
     return (
         <div className="flex flex-col h-[calc(100vh-2rem)] p-4 md:p-8 max-w-5xl mx-auto w-full">
             <div className="mb-8 text-center space-y-2">
-                <h1 className="text-4xl font-bold tracking-tight text-slate-900">Good Morning, Agent.</h1>
-                <p className="text-lg text-slate-500">Ready to analyze the latest intelligence?</p>
+                <h1 className="text-4xl font-bold">Welcome to EVE.</h1>
+                <p className="text-muted-foreground">What are we doing today?</p>
             </div>
 
             <div className="flex-1 flex flex-col gap-6 min-h-0">

@@ -33,7 +33,7 @@ const PRESET_PROMPTS = [
 
 export function ChatInterface({ tenantId, externalTrigger }: ChatInterfaceProps) {
     const [messages, setMessages] = useState<Message[]>([
-        { role: 'assistant', content: 'Hello! I am your research assistant. Ask me anything about your uploaded documents.' }
+        { role: 'assistant', content: 'What are we tackling next?' }
     ]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
@@ -114,8 +114,8 @@ export function ChatInterface({ tenantId, externalTrigger }: ChatInterfaceProps)
         <Card className="h-[600px] flex flex-col bg-slate-50 border-slate-200 shadow-md">
             <CardHeader className="px-6 py-4 border-b bg-white rounded-t-lg">
                 <CardTitle className="flex items-center gap-2 text-slate-800">
-                    <Bot className="h-5 w-5 text-indigo-600" />
-                    AI Research Assistant
+                    <span className="font-bold text-primary">EVE</span>
+                    <span className="font-semibold">Chat with EVE</span>
                 </CardTitle>
             </CardHeader>
 
