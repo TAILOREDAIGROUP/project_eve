@@ -1,19 +1,42 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+let supabase: SupabaseClient | null = null;
+
+function getSupabase(): SupabaseClient | null {
+  if (supabase) return supabase;
+  
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+  
+  if (!url || !key) {
+    console.log('[AgenticStats] Supabase not configured, using demo data');
+    return null;
+  }
+  
+  supabase = createClient(url, key);
+  return supabase;
+}
 
 export async function GET(req: Request) {
+  const db = getSupabase();
+  
+  if (!db) {
+    return NextResponse.json({
+      engagementLevel: { level: 2, name: 'Co-Worker' },
+      reflectionStats: { averageScore: 87, totalReflections: 156 },
+      learningStats: { feedbackCount: 89, successRate: 94 },
+      goalStats: { active: 3, completed: 12, averageProgress: 67 },
+      knowledgeStats: { entities: 47, relationships: 83 },
+    });
+  }
+
   const { searchParams } = new URL(req.url);
   const tenantId = searchParams.get('tenant_id') || 'default-tenant';
   const userId = searchParams.get('user_id') || 'default-user';
 
   try {
-    // Get engagement level
-    const { data: settings } = await supabase
+    const { data: settings } = await db
       .from('user_settings')
       .select('engagement_level')
       .eq('user_id', userId)
@@ -26,8 +49,7 @@ export async function GET(req: Request) {
       3: 'Personal Assistant',
     };
 
-    // Get reflection stats
-    const { data: reflections } = await supabase
+    const { data: reflections } = await db
       .from('reflections')
       .select('scores')
       .eq('tenant_id', tenantId);
@@ -37,8 +59,7 @@ export async function GET(req: Request) {
       ? Math.round(reflections!.reduce((sum, r) => sum + (r.scores?.overall || 0), 0) / totalReflections)
       : 0;
 
-    // Get feedback stats
-    const { data: feedback } = await supabase
+    const { data: feedback } = await db
       .from('feedback')
       .select('feedback')
       .eq('tenant_id', tenantId);
@@ -47,8 +68,7 @@ export async function GET(req: Request) {
     const positiveCount = feedback?.filter(f => f.feedback === 'positive').length || 0;
     const successRate = feedbackCount > 0 ? Math.round((positiveCount / feedbackCount) * 100) : 0;
 
-    // Get goal stats
-    const { data: goals } = await supabase
+    const { data: goals } = await db
       .from('goals')
       .select('status, progress')
       .eq('tenant_id', tenantId);
@@ -59,39 +79,22 @@ export async function GET(req: Request) {
       ? Math.round(goals.reduce((sum, g) => sum + (g.progress || 0), 0) / goals.length)
       : 0;
 
-    // Get knowledge stats
-    const { count: entityCount } = await supabase
+    const { count: entityCount } = await db
       .from('knowledge_entities')
       .select('*', { count: 'exact', head: true })
       .eq('tenant_id', tenantId);
 
-    const { count: relationshipCount } = await supabase
+    const { count: relationshipCount } = await db
       .from('knowledge_relationships')
       .select('*', { count: 'exact', head: true })
       .eq('tenant_id', tenantId);
 
     return NextResponse.json({
-      engagementLevel: {
-        level: engagementLevel,
-        name: engagementNames[engagementLevel] || 'Co-Worker',
-      },
-      reflectionStats: {
-        averageScore,
-        totalReflections,
-      },
-      learningStats: {
-        feedbackCount,
-        successRate,
-      },
-      goalStats: {
-        active: activeGoals,
-        completed: completedGoals,
-        averageProgress,
-      },
-      knowledgeStats: {
-        entities: entityCount || 0,
-        relationships: relationshipCount || 0,
-      },
+      engagementLevel: { level: engagementLevel, name: engagementNames[engagementLevel] || 'Co-Worker' },
+      reflectionStats: { averageScore, totalReflections },
+      learningStats: { feedbackCount, successRate },
+      goalStats: { active: activeGoals, completed: completedGoals, averageProgress },
+      knowledgeStats: { entities: entityCount || 0, relationships: relationshipCount || 0 },
     });
   } catch (error) {
     console.error('[AgenticStats] Error:', error);
