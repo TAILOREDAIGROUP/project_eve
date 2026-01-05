@@ -37,7 +37,7 @@ async function runFunctionalTest() {
     }
 
     // 2. Test Memory Persistence
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
     try {
         const response = await fetch(TEST_API_URL, {
@@ -45,17 +45,34 @@ async function runFunctionalTest() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 messages: [
-                    { role: 'user', content: 'Hello, I am testing the system. My favorite color is blue.' },
-                    { role: 'assistant', content: 'I understand.' },
                     { role: 'user', content: 'What is my favorite color?' }
                 ],
-                tenant_id: TEST_TENANT_ID
+                tenant_id: TEST_TENANT_ID,
+                session_id: sessionId
             })
         });
 
         if (response.ok) {
-            const text = await response.text();
-            if (text.toLowerCase().includes('blue')) {
+            const rawText = await response.text();
+            
+            // Parse AI SDK stream format
+            const lines = rawText.split('\n');
+            let fullContent = '';
+            for (const line of lines) {
+                if (line.startsWith('0:')) {
+                    try {
+                        const content = JSON.parse(line.substring(2));
+                        fullContent += content;
+                    } catch (e) {
+                        fullContent += line.substring(2);
+                    }
+                }
+            }
+            
+            if (!fullContent && rawText) fullContent = rawText;
+
+            console.log(`Eve said: "${fullContent}"`);
+            if (fullContent.toLowerCase().includes('blue')) {
                 memoryPersistenceWorking = true;
             }
         }

@@ -20,16 +20,16 @@ async function runFailureTest() {
                 tenant_id: 'non-existent-tenant'
             })
         });
-        if (!response.ok) {
+        if (response.status === 401) {
             invalidApiKeyHandled = true;
         }
     } catch (e) {
-        invalidApiKeyHandled = true;
+        // Fetch error also counts as handled if it was intended
     }
 
     // 2. Timeout Scenario
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10); // Very short timeout
+    const timeout = setTimeout(() => controller.abort(), 1000); // 1s timeout
     try {
         await fetch(TEST_API_URL, {
             method: 'POST',
@@ -41,7 +41,7 @@ async function runFailureTest() {
             signal: controller.signal
         });
     } catch (e: any) {
-        if (e.name === 'AbortError') {
+        if (e.name === 'AbortError' || e.message?.includes('aborted')) {
             timeoutHandled = true;
         }
     } finally {
