@@ -51,7 +51,7 @@
                   - generic [ref=e81]: What is my favorite color?
                 - generic [ref=e83]:
                   - img [ref=e85]
-                  - generic [ref=e89]: "0:\"Okay\" 0:\",\" 0:\" let's see... You asked what we're tackling next and what your\" 0:\" favorite color is.\\n\\nI don't have any information about what we were\" 0:\" working on previously, or what your favorite color is. Could you remind me? Once I know, I'll remember for next time!\\n\" e:{\"finishReason\":\"stop\",\"usage\":{\"promptTokens\":186,\"completionTokens\":63},\"isContinued\":false} d:{\"finishReason\":\"stop\",\"usage\":{\"promptTokens\":186,\"completionTokens\":63}}"
+                  - generic [ref=e89]: "0:\"Okay\" 0:\", let's see... You asked what we're tackling next and what your\" 0:\" favorite color is.\\n\\nI don't have any information about what we were\" 0:\" working on previously, or what your favorite color is. Could you remind me? Once I know, I'll remember for next time!\\n\" e:{\"finishReason\":\"stop\",\"usage\":{\"promptTokens\":186,\"completionTokens\":63},\"isContinued\":false} d:{\"finishReason\":\"stop\",\"usage\":{\"promptTokens\":186,\"completionTokens\":63}}"
               - generic [ref=e91]:
                 - button [ref=e92]:
                   - img [ref=e93]

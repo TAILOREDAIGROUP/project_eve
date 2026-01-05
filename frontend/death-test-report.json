@@ -1,16 +1,16 @@
 {
-  "timestamp": "2026-01-05T14:01:30.028Z",
-  "score": 50,
-  "status": "🟡 NOT READY",
+  "timestamp": "2026-01-05T14:30:58.379Z",
+  "score": 75,
+  "status": "⚠️ CAUTION",
   "details": {
     "stress": {
       "name": "STRESS TEST",
       "successRate": 100,
-      "avgResponseTime": 3.048747797,
+      "avgResponseTime": 3.0310522839999994,
       "rateLimitingWorking": false,
-      "p50": 3005.0334000000003,
-      "p95": 3642.1911,
-      "p99": 5408.4629,
+      "p50": 3030.4273000000003,
+      "p95": 3450.5708000000004,
+      "p99": 3643.9927999999995,
       "success": true
     },
     "security": {
@@ -23,9 +23,9 @@
     },
     "failure": {
       "name": "FAILURE TEST",
-      "invalidApiKeyHandled": false,
-      "timeoutHandled": false,
-      "success": false
+      "invalidApiKeyHandled": true,
+      "timeoutHandled": true,
+      "success": true
     },
     "functional": {
       "name": "FUNCTIONAL TEST",
