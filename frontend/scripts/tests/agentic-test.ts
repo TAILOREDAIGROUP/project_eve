@@ -11,14 +11,27 @@ interface AgenticTestResult {
   details: string;
 }
 
+// Store conversation history per session
+const conversationHistories: Record<string, { role: string, content: string }[]> = {};
+
 async function sendMessage(message: string, tenantId: string = 'test-tenant', sessionId?: string): Promise<string> {
+  const actualSessionId = sessionId || `session-${tenantId}`;
+  
+  // Initialize or get history
+  if (!conversationHistories[actualSessionId]) {
+    conversationHistories[actualSessionId] = [];
+  }
+  
+  // Add user message to history
+  conversationHistories[actualSessionId].push({ role: 'user', content: message });
+
   const response = await fetch(TEST_API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      messages: [{ role: 'user', content: message }],
+      messages: conversationHistories[actualSessionId],
       tenant_id: tenantId,
-      session_id: sessionId || `session-${tenantId}`,
+      session_id: actualSessionId,
     }),
   });
   if (!response.ok) {
@@ -43,7 +56,12 @@ async function sendMessage(message: string, tenantId: string = 'test-tenant', se
   
   // If no 0: lines found, try returning the raw text if it doesn't look like a stream
   if (!fullContent && rawText) {
-    return rawText;
+    fullContent = rawText;
+  }
+  
+  // Add assistant response to history
+  if (fullContent) {
+    conversationHistories[actualSessionId].push({ role: 'assistant', content: fullContent });
   }
   
   return fullContent;

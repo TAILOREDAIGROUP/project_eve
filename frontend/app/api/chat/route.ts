@@ -207,6 +207,22 @@ Respond helpfully to the user's message. If they've shared information before, u
     const contextMessages = fullMessages.slice(-20);
 
     // =========================================================================
+    // STEP 4.5: SAVE USER MESSAGE TO HISTORY (IMMEDIATE)
+    // =========================================================================
+    try {
+      const { error: saveError } = await supabase.from('conversations').insert({
+        session_id: sessionId,
+        user_id: userId,
+        tenant_id: userId,
+        role: 'user',
+        content: userQuery,
+      });
+      if (saveError) console.error('[Save] Error saving user message:', saveError);
+    } catch (err) {
+      console.error('[Save] Critical error saving user message:', err);
+    }
+
+    // =========================================================================
     // STEP 5: GENERATE RESPONSE
     // =========================================================================
     const result = await streamText({
@@ -215,32 +231,25 @@ Respond helpfully to the user's message. If they've shared information before, u
       messages: contextMessages,
       onFinish: async (event) => {
         try {
-          // Save user message to conversation history
-          await supabase.from('conversations').insert({
-            session_id: sessionId,
-            user_id: userId,
-            tenant_id: userId,
-            role: 'user',
-            content: userQuery,
-          });
-
           // Save assistant response to conversation history
-          await supabase.from('conversations').insert({
+          const { error: assistantError } = await supabase.from('conversations').insert({
             session_id: sessionId,
             user_id: userId,
             tenant_id: userId,
             role: 'assistant',
             content: event.text,
           });
+          
+          if (assistantError) console.error('[Save] Error saving assistant response:', assistantError);
 
           // ===================================================================
           // STEP 6: EXTRACT AND SAVE NEW MEMORIES
           // ===================================================================
           await extractAndSaveMemories(userQuery, event.text, userId, openrouter);
 
-          console.log(`[Save] Saved conversation and extracted memories for ${userId}`);
+          console.log(`[Save] Completed background tasks for ${userId}`);
         } catch (error) {
-          console.error('[Save] Error saving conversation:', error);
+          console.error('[Save] Error in onFinish:', error);
         }
       },
     });
@@ -321,23 +330,28 @@ If there are no memorable facts, return: {"memories": []}`;
 
     // Save each memory
     for (const memory of parsed.memories) {
+      if (!memory.content) continue;
+
       // Check if similar memory already exists
-      const { data: existing } = await supabase
+      const { data: existing, error: checkError } = await supabase
         .from('memories')
         .select('id')
         .eq('user_id', userId)
-        .ilike('content', `%${memory.content.substring(0, 50)}%`)
+        .ilike('content', `%${memory.content.substring(0, 30).replace(/[%_]/g, '')}%`)
         .limit(1);
 
+      if (checkError) console.error('[Memory] Error checking existing memory:', checkError);
+
       if (!existing || existing.length === 0) {
-        await supabase.from('memories').insert({
+        const { error: insertError } = await supabase.from('memories').insert({
           user_id: userId,
           tenant_id: userId,
           content: memory.content,
           memory_type: memory.type || 'fact',
           importance: memory.importance || 5,
         });
-        console.log(`[Memory] Saved new memory: ${memory.content}`);
+        if (insertError) console.error('[Memory] Error saving new memory:', insertError);
+        else console.log(`[Memory] Saved new memory: ${memory.content}`);
       }
     }
   } catch (error) {

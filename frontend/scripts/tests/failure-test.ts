@@ -29,7 +29,7 @@ async function runFailureTest() {
 
     // 2. Timeout Scenario
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1000); // 1s timeout
+    const timeout = setTimeout(() => controller.abort(), 10); // 10ms timeout to ensure it triggers
     try {
         await fetch(TEST_API_URL, {
             method: 'POST',

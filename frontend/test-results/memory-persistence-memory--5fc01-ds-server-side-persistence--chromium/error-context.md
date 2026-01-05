@@ -1,0 +1,63 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]: EVE
+      - navigation [ref=e5]:
+        - link "Dashboard" [ref=e6] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e7]
+          - text: Dashboard
+        - link "Data Sources" [ref=e12] [cursor=pointer]:
+          - /url: /dashboard/data-sources
+          - img [ref=e13]
+          - text: Data Sources
+        - link "Settings" [ref=e17] [cursor=pointer]:
+          - /url: /dashboard/settings
+          - img [ref=e18]
+          - text: Settings
+    - main [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e23]:
+          - heading "Welcome to EVE." [level=1] [ref=e24]
+          - paragraph [ref=e25]: What are we doing today?
+        - generic [ref=e26]:
+          - generic [ref=e28]:
+            - generic [ref=e30] [cursor=pointer]:
+              - img [ref=e32]
+              - generic [ref=e35]: Audit Invoice
+            - generic [ref=e37] [cursor=pointer]:
+              - img [ref=e39]
+              - generic [ref=e42]: Summarize Policy
+            - generic [ref=e44] [cursor=pointer]:
+              - img [ref=e46]
+              - generic [ref=e48]: Find Risks
+            - generic [ref=e50] [cursor=pointer]:
+              - img [ref=e52]
+              - generic [ref=e57]: Create Graph
+          - generic [ref=e59]:
+            - heading "EVE Chat with EVE" [level=3] [ref=e61]:
+              - generic [ref=e62]: EVE
+              - generic [ref=e63]: Chat with EVE
+            - generic [ref=e64]:
+              - generic [ref=e65]:
+                - generic [ref=e67]:
+                  - img [ref=e69]
+                  - generic [ref=e73]: What are we tackling next?
+                - generic [ref=e75]:
+                  - img [ref=e77]
+                  - generic [ref=e81]: What is my favorite color?
+                - generic [ref=e83]:
+                  - img [ref=e85]
+                  - generic [ref=e89]: "0:\"Okay\" 0:\",\" 0:\" let's see... You asked what we're tackling next and what your\" 0:\" favorite color is.\\n\\nI don't have any information about what we were\" 0:\" working on previously, or what your favorite color is. Could you remind me? Once I know, I'll remember for next time!\\n\" e:{\"finishReason\":\"stop\",\"usage\":{\"promptTokens\":186,\"completionTokens\":63},\"isContinued\":false} d:{\"finishReason\":\"stop\",\"usage\":{\"promptTokens\":186,\"completionTokens\":63}}"
+              - generic [ref=e91]:
+                - button [ref=e92]:
+                  - img [ref=e93]
+                - textbox "Ask a question about your documents..." [ref=e95]
+                - button "Send" [disabled]:
+                  - img
+                  - generic: Send
+  - alert [ref=e96]
+```

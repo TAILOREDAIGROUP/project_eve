@@ -1,16 +1,16 @@
 {
-  "timestamp": "2026-01-05T13:34:42.686Z",
-  "score": 100,
-  "status": "✅ READY FOR PRODUCTION",
+  "timestamp": "2026-01-05T14:01:30.028Z",
+  "score": 50,
+  "status": "🟡 NOT READY",
   "details": {
     "stress": {
       "name": "STRESS TEST",
       "successRate": 100,
-      "avgResponseTime": 3.8787946519999994,
+      "avgResponseTime": 3.048747797,
       "rateLimitingWorking": false,
-      "p50": 1845.0084000000002,
-      "p95": 2108.3903999999998,
-      "p99": 204985.7831,
+      "p50": 3005.0334000000003,
+      "p95": 3642.1911,
+      "p99": 5408.4629,
       "success": true
     },
     "security": {
@@ -23,16 +23,16 @@
     },
     "failure": {
       "name": "FAILURE TEST",
-      "invalidApiKeyHandled": true,
-      "timeoutHandled": true,
-      "success": true
+      "invalidApiKeyHandled": false,
+      "timeoutHandled": false,
+      "success": false
     },
     "functional": {
       "name": "FUNCTIONAL TEST",
       "chatFlowWorking": true,
       "sessionIdReceived": true,
-      "memoryPersistenceWorking": true,
-      "success": true
+      "memoryPersistenceWorking": false,
+      "success": false
     }
   }
 }

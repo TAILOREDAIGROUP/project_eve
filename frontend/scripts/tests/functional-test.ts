@@ -2,7 +2,7 @@ const TEST_API_URL = process.env.TEST_API_URL || 'http://localhost:3000/api/chat
 const TEST_TENANT_ID = 'functional-test-tenant-' + Date.now();
 
 async function runFunctionalTest() {
-    console.log('✅ Starting Functional Test...');
+    console.log(`✅ Starting Functional Test with Tenant ID: ${TEST_TENANT_ID}`);
     
     let chatFlowWorking = false;
     let memoryPersistenceWorking = false;
