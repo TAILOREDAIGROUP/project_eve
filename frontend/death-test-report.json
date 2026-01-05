@@ -1,16 +1,16 @@
 {
-  "timestamp": "2026-01-05T14:30:58.379Z",
+  "timestamp": "2026-01-05T14:52:49.926Z",
   "score": 75,
   "status": "⚠️ CAUTION",
   "details": {
     "stress": {
       "name": "STRESS TEST",
-      "successRate": 100,
-      "avgResponseTime": 3.0310522839999994,
+      "successRate": 99,
+      "avgResponseTime": 3.08106006,
       "rateLimitingWorking": false,
-      "p50": 3030.4273000000003,
-      "p95": 3450.5708000000004,
-      "p99": 3643.9927999999995,
+      "p50": 3019.5884,
+      "p95": 3339.2451,
+      "p99": 27220.3773,
       "success": true
     },
     "security": {
