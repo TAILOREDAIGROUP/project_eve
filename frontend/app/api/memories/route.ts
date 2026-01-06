@@ -1,26 +1,14 @@
 import { NextResponse } from 'next/server';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-
-let supabase: SupabaseClient | null = null;
-
-function getSupabase(): SupabaseClient | null {
-  if (supabase) return supabase;
-  
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
-  
-  if (!url || !key) {
-    return null;
-  }
-  
-  supabase = createClient(url, key);
-  return supabase;
-}
+import { getSupabase } from '@/lib/supabase';
 
 export async function GET(req: Request) {
   const db = getSupabase();
   
-  if (!db) {
+  // Check if we have valid config
+  const isConfigured = process.env.NEXT_PUBLIC_SUPABASE_URL && 
+    (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY);
+
+  if (!isConfigured) {
     return NextResponse.json({
       memories: [
         { id: '1', content: 'User prefers concise responses', memory_type: 'preference', importance: 8, created_at: new Date().toISOString() },

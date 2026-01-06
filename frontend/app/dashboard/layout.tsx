@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Database, Settings } from 'lucide-react';
+import { Database, Settings, Brain, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardLayout({
@@ -16,8 +16,12 @@ export default function DashboardLayout({
                 </div>
                 <nav className="space-y-1 px-4">
                     <Link href="/dashboard" className="flex items-center gap-3 rounded-lg hover:bg-muted px-3 py-2 text-foreground font-medium transition-colors">
-                        <LayoutDashboard className="h-5 w-5" />
-                        Dashboard
+                        <MessageSquare className="h-5 w-5" />
+                        Chat with Eve
+                    </Link>
+                    <Link href="/dashboard/intelligence" className="flex items-center gap-3 rounded-lg hover:bg-muted px-3 py-2 text-foreground font-medium transition-colors">
+                        <Brain className="h-5 w-5" />
+                        Your AI Profile
                     </Link>
                     <Link href="/dashboard/data-sources" className="flex items-center gap-3 rounded-lg hover:bg-muted px-3 py-2 text-foreground font-medium transition-colors">
                         <Database className="h-5 w-5" />
