@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Settings, Brain, MessageSquare, Plug, GraduationCap } from 'lucide-react';
+import { Database, Settings, Brain, MessageSquare, Plug, GraduationCap, History } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardLayout({
@@ -38,6 +38,10 @@ export default function DashboardLayout({
                     <Link href="/dashboard/learning" className="flex items-center gap-3 rounded-lg hover:bg-muted px-3 py-2 text-foreground font-medium transition-colors">
                         <GraduationCap className="h-5 w-5" />
                         How Eve Learns
+                    </Link>
+                    <Link href="/dashboard/actions" className="flex items-center gap-3 rounded-lg hover:bg-muted px-3 py-2 text-foreground font-medium transition-colors">
+                        <History className="h-5 w-5" />
+                        Action History
                     </Link>
                 </nav>
             </aside>

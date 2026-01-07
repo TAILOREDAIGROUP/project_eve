@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { WelcomeEmptyState } from '@/components/welcome-empty-state';
 import {
   Brain,
   TrendingUp,
@@ -294,11 +295,16 @@ export default function LearningPage() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Sparkles className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Eve is still learning about your business.</p>
-                  <p className="text-sm text-muted-foreground mt-1">Use more tasks to help Eve understand your preferences.</p>
-                </div>
+                <WelcomeEmptyState
+                  title="Eve is still learning"
+                  description="Use more tasks to help Eve understand your business preferences and patterns."
+                  icon={<Sparkles className="h-8 w-8 text-white" />}
+                  tips={[
+                    "The more you use Eve, the better she learns",
+                    "Give feedback on tasks to help Eve improve",
+                    "Try different tasks to see what Eve can learn"
+                  ]}
+                />
               )}
             </CardContent>
           </Card>
@@ -361,11 +367,18 @@ export default function LearningPage() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No terms added yet.</p>
-                  <p className="text-sm text-muted-foreground mt-1">Add your company's terminology to help Eve communicate better.</p>
-                </div>
+                <WelcomeEmptyState
+                  title="No terms added yet"
+                  description="Teach Eve your company's unique terminology, product names, and acronyms."
+                  icon={<BookOpen className="h-8 w-8 text-white" />}
+                  actionLabel="Add Your First Term"
+                  onAction={() => setShowAddTerm(true)}
+                  tips={[
+                    "Add product names like 'Project Eve'",
+                    "Add acronyms like 'SKU' or 'MRR'",
+                    "Add company-specific terms"
+                  ]}
+                />
               )}
             </CardContent>
           </Card>
