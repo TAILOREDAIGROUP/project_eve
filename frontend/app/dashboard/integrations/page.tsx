@@ -90,6 +90,49 @@ export default function IntegrationsPage() {
     setLoading(false);
   };
 
+  const pollForConnection = async (providerId: string, popup: Window | null) => {
+    const maxAttempts = 30; // 60 seconds max
+    let attempts = 0;
+    
+    const checkConnection = async () => {
+      attempts++;
+      
+      // Check if popup is closed
+      if (popup?.closed) {
+        // Give Nango a moment to process the callback
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Fetch fresh integration status from database
+        await loadData();
+        
+        // Check if this specific provider is now connected
+        const response = await fetch(`/api/integrations?tenant_id=${TENANT_ID}`);
+        const data = await response.json();
+        const integration = data.integrations?.find(
+          (i: any) => i.provider_id === providerId && i.status === 'connected'
+        );
+        
+        if (!integration) {
+          setError('Connection cancelled or pending. Click refresh if it should be connected.');
+        }
+        
+        setConnecting(null);
+        return;
+      }
+      
+      // Keep polling if popup still open and under max attempts
+      if (attempts < maxAttempts) {
+        setTimeout(checkConnection, 2000);
+      } else {
+        // Timeout - popup open too long
+        setConnecting(null);
+        setError('Connection timed out. Please try again.');
+      }
+    };
+    
+    checkConnection();
+  };
+
   const connectProvider = async (providerId: string) => {
     setConnecting(providerId);
     setError(null);
@@ -131,14 +174,8 @@ export default function IntegrationsPage() {
         `width=${width},height=${height},left=${left},top=${top}`
       );
 
-      // 3. Poll for connection completion (simplified for this UI)
-      const pollInterval = setInterval(async () => {
-        if (popup?.closed) {
-          clearInterval(pollInterval);
-          await loadData();
-          setConnecting(null);
-        }
-      }, 2000);
+      // 3. Poll for connection completion
+      pollForConnection(providerId, popup);
 
     } catch (err: any) {
       console.error('Nango connection error:', err);
@@ -191,11 +228,22 @@ export default function IntegrationsPage() {
       <div className="max-w-4xl mx-auto p-8 space-y-8">
         
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Connect Your Tools</h1>
-          <p className="text-slate-500 mt-1">
-            Link your business systems so Eve can access your data and help you work smarter
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">Connect Your Tools</h1>
+            <p className="text-slate-500 mt-1">
+              Link your business systems so Eve can access your data and help you work smarter
+            </p>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => loadData()}
+            className="text-slate-600 border-slate-200"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh Status
+          </Button>
         </div>
 
         {/* Error Banner */}
