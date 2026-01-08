@@ -69,15 +69,19 @@ async function fetchIntegrationData(tenantId: string, integrations: any[]) {
   return data;
 }
 
-export async function POST(req: Request) {
-  const supabase = getSupabase();
-  // Security headers helper
-  const securityHeaders = {
+// Security headers helper
+function getSecurityHeaders() {
+  return {
     'Content-Security-Policy': "default-src 'self'",
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
   };
+}
+
+export async function POST(req: Request) {
+  const supabase = getSupabase();
+  const securityHeaders = getSecurityHeaders();
 
   // Check for API key from Authorization header first, then env
   const authHeader = req.headers.get('Authorization');
@@ -92,7 +96,7 @@ export async function POST(req: Request) {
   }
 
   if (!apiKey) {
-    apiKey = process.env.OPENROUTER_API_KEY || null;
+    apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY || null;
   }
 
   if (!apiKey) {
