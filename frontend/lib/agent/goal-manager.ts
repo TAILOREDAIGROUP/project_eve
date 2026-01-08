@@ -333,6 +333,31 @@ Respond ONLY with valid JSON:
       return { total: 0, active: 0, completed: 0, averageProgress: 0 };
     }
   }
+
+  /**
+   * Get goal context for the system prompt
+   */
+  async getGoalContext(): Promise<string> {
+    const activeGoals = await this.getActiveGoals();
+    if (activeGoals.length === 0) return '';
+
+    let context = '\n## ACTIVE USER GOALS\n';
+    context += 'The user is currently working on these goals:\n';
+    
+    activeGoals.forEach((goal, i) => {
+      context += `${i + 1}. ${goal.title} (${goal.progress}% complete)\n`;
+      const pendingSubtasks = goal.subtasks
+        .filter(st => st.status === 'pending' || st.status === 'in_progress')
+        .slice(0, 3);
+      
+      if (pendingSubtasks.length > 0) {
+        context += `   Next steps: ${pendingSubtasks.map(st => st.description).join(', ')}\n`;
+      }
+    });
+
+    context += '\nReference these goals when they are relevant to help the user stay on track.\n';
+    return context;
+  }
 }
 
 /**

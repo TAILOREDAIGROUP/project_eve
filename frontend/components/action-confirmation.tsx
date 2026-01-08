@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { 
   AlertTriangle, 
   Send, 
@@ -153,9 +152,11 @@ export function ActionConfirmation({
             >
               <div className="flex items-start gap-3">
                 {!hasResults && (
-                  <Checkbox
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-600"
                     checked={selectedActions.has(action.id)}
-                    onCheckedChange={() => toggleAction(action.id)}
+                    onChange={() => toggleAction(action.id)}
                     disabled={executing}
                   />
                 )}

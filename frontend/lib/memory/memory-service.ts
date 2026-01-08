@@ -220,6 +220,26 @@ export class MemoryService {
     }
 
     /**
+     * End a conversation session
+     */
+    async endSession(sessionId: string, summary?: string): Promise<void> {
+        try {
+            const { error } = await supabase
+                .from('conversation_sessions')
+                .update({
+                    is_active: false,
+                    summary,
+                    ended_at: new Date().toISOString(),
+                })
+                .eq('id', sessionId);
+
+            if (error) throw error;
+        } catch (error) {
+            console.error('Error ending session:', error);
+        }
+    }
+
+    /**
      * Extract memories (Placeholder for LLM-based extraction)
      */
     async extractMemoriesFromMessage(userMessage: string, assistantResponse: string): Promise<void> {

@@ -16,5 +16,5 @@ export const getSupabase = (): SupabaseClient => {
   return supabaseInstance;
 };
 
-// For backward compatibility while we migrate
-export const supabase = getSupabase();
+// Use getSupabase() instead of this constant to ensure lazy initialization
+export const supabase = typeof window !== 'undefined' ? getSupabase() : null as unknown as SupabaseClient;

@@ -1,0 +1,119 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e7]: EVE
+      - navigation [ref=e8]:
+        - link "Chat with Eve" [ref=e9] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e10]
+          - text: Chat with Eve
+        - link "Your AI Profile" [ref=e12] [cursor=pointer]:
+          - /url: /dashboard/intelligence
+          - img [ref=e13]
+          - text: Your AI Profile
+        - link "Data Sources" [ref=e21] [cursor=pointer]:
+          - /url: /dashboard/data-sources
+          - img [ref=e22]
+          - text: Data Sources
+        - link "Connect Tools" [ref=e26] [cursor=pointer]:
+          - /url: /dashboard/integrations
+          - img [ref=e27]
+          - text: Connect Tools
+        - link "How Eve Learns" [ref=e30] [cursor=pointer]:
+          - /url: /dashboard/learning
+          - img [ref=e31]
+          - text: How Eve Learns
+        - link "Action History" [ref=e34] [cursor=pointer]:
+          - /url: /dashboard/actions
+          - img [ref=e35]
+          - text: Action History
+        - link "Settings" [ref=e39] [cursor=pointer]:
+          - /url: /dashboard/settings
+          - img [ref=e40]
+          - text: Settings
+        - link "Manage Prompts" [ref=e44] [cursor=pointer]:
+          - /url: /admin/prompts
+          - img [ref=e45]
+          - text: Manage Prompts
+    - main [ref=e47]:
+      - generic [ref=e49]:
+        - generic [ref=e50]:
+          - heading "Connect Your Tools" [level=1] [ref=e51]
+          - paragraph [ref=e52]: Link your business systems so Eve can access your data and help you work smarter
+        - generic [ref=e53]:
+          - img [ref=e54]
+          - generic [ref=e56]:
+            - paragraph [ref=e57]: 1 tool connected
+            - paragraph [ref=e58]: Eve can now access data from these systems to help you
+        - generic [ref=e59]:
+          - heading "What happens when you connect?" [level=3] [ref=e61]
+          - generic [ref=e63]:
+            - generic [ref=e64]:
+              - img [ref=e66]
+              - generic [ref=e68]:
+                - heading "Secure Access" [level=4] [ref=e69]
+                - paragraph [ref=e70]: OAuth 2.0 — we never see your password
+            - generic [ref=e71]:
+              - img [ref=e73]
+              - generic [ref=e78]:
+                - heading "Auto-Sync" [level=4] [ref=e79]
+                - paragraph [ref=e80]: Data stays fresh automatically
+            - generic [ref=e81]:
+              - img [ref=e83]
+              - generic [ref=e85]:
+                - heading "Smart Answers" [level=4] [ref=e86]
+                - paragraph [ref=e87]: Ask questions across all your tools
+        - generic [ref=e88]:
+          - generic [ref=e91]:
+            - generic [ref=e92]:
+              - img [ref=e94]
+              - generic [ref=e97]:
+                - heading "Google Workspace" [level=3] [ref=e98]
+                - paragraph [ref=e99]: Gmail, Google Drive, Calendar
+                - generic [ref=e100]: productivity
+            - button "Connect" [ref=e102]
+          - generic [ref=e104]:
+            - generic [ref=e105]:
+              - generic [ref=e106]:
+                - img [ref=e108]
+                - generic [ref=e110]:
+                  - heading "HubSpot" [level=3] [ref=e111]
+                  - paragraph [ref=e112]: CRM - Deals, Contacts, Companies
+                  - generic [ref=e113]: crm
+              - generic [ref=e114]:
+                - generic [ref=e115]:
+                  - img [ref=e116]
+                  - text: Connected
+                - button "Disconnect" [ref=e118]
+            - generic [ref=e119]: "Connected as: demo@example.com"
+          - generic [ref=e122]:
+            - generic [ref=e123]:
+              - img [ref=e125]
+              - generic [ref=e128]:
+                - heading "Notion" [level=3] [ref=e129]
+                - paragraph [ref=e130]: Documents and databases
+                - generic [ref=e131]: productivity
+            - button "Connect" [ref=e133]
+          - generic [ref=e136]:
+            - generic [ref=e137]:
+              - img [ref=e139]
+              - generic [ref=e143]:
+                - heading "Shopify" [level=3] [ref=e144]
+                - paragraph [ref=e145]: Orders, Products, Customers
+                - generic [ref=e146]: finance
+            - button "Connect" [ref=e148]
+          - generic [ref=e151]:
+            - generic [ref=e152]:
+              - img [ref=e154]
+              - generic [ref=e156]:
+                - heading "Slack" [level=3] [ref=e157]
+                - paragraph [ref=e158]: Messages and channels
+                - generic [ref=e159]: communication
+            - button "Connect" [ref=e161]
+  - button "Open Next.js Dev Tools" [ref=e167] [cursor=pointer]:
+    - img [ref=e168]
+  - alert [ref=e171]
+```

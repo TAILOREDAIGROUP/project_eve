@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Sparkles, X } from 'lucide-react';
+import { Send, Sparkles, X, RefreshCw, ChevronRight } from 'lucide-react';
 import { QuickActions } from '@/components/quick-actions';
 import { DepartmentCard } from '@/components/department-card';
 import { SmartTaskForm } from '@/components/smart-task-form';
@@ -179,79 +179,84 @@ export default function Dashboard() {
 
   if (onboardingLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <RefreshCw className="h-8 w-8 text-slate-400 animate-spin" />
       </div>
     );
   }
 
   return (
-    <>
+    <div className="min-h-screen bg-slate-50/50">
       <OnboardingWizard open={showOnboarding} onComplete={handleOnboardingComplete} />
       
-      <div className="container mx-auto p-6 space-y-6 max-w-6xl">
+      <div className="max-w-6xl mx-auto p-8 space-y-8">
         {/* Quick Actions */}
         <QuickActions onRunTask={(prompt) => handleRunTask(prompt)} />
 
         {/* Smart Task Form (when active) */}
         {activeTask && (
-          <SmartTaskForm
-            taskTitle={activeTask.title}
-            taskIcon={activeTask.icon}
-            promptTemplate={activeTask.prompt}
-            onSubmit={handleSmartFormSubmit}
-            onCancel={() => setActiveTask(null)}
-          />
+          <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+            <SmartTaskForm
+              taskTitle={activeTask.title}
+              taskIcon={activeTask.icon}
+              promptTemplate={activeTask.prompt}
+              onSubmit={handleSmartFormSubmit}
+              onCancel={() => setActiveTask(null)}
+            />
+          </div>
         )}
 
-        {/* Chat Card */}
-        <Card className="border-2">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Sparkles className="h-5 w-5 text-purple-500" />
-              Chat with Eve
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        {/* Chat Section */}
+        <Card className="border-slate-200 shadow-sm overflow-hidden bg-white">
+          <CardContent className="p-0">
+            <div className="flex items-center gap-2 px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <Sparkles className="h-4 w-4 text-slate-400" strokeWidth={1.5} />
+              <h2 className="text-xs font-semibold text-slate-500 tracking-wider uppercase">Executive Assistant</h2>
+            </div>
+            
             {/* Messages */}
-            <div className="h-[300px] overflow-y-auto mb-4 space-y-4 pr-2">
+            <div className="h-96 overflow-y-auto p-6 space-y-6">
               {messages.map((message, index) => (
-                <div key={index}>
-                  <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  key={index}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'} max-w-[85%]`}>
                     <div
-                      className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                      className={`px-4 py-3 rounded-2xl ${
                         message.role === 'user'
-                          ? 'bg-purple-500 text-white'
-                          : 'bg-muted'
+                          ? 'bg-slate-900 text-white rounded-tr-none'
+                          : 'bg-slate-100 text-slate-700 rounded-tl-none'
                       }`}
                     >
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                     </div>
+                    
+                    {message.role === 'assistant' && message.showActions && message.content && (
+                      <div className="w-full animate-in fade-in duration-500">
+                        <TaskResultActions
+                          content={message.content}
+                          taskType={message.taskType}
+                          onFeedback={handleFeedback}
+                          onRegenerate={() => {
+                            const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+                            if (lastUserMessage) {
+                              sendMessage(lastUserMessage.content, lastUserMessage.taskType);
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
-                  {message.role === 'assistant' && message.showActions && message.content && (
-                    <div className="ml-4 mt-2">
-                      <TaskResultActions
-                        content={message.content}
-                        taskType={message.taskType}
-                        onFeedback={handleFeedback}
-                        onRegenerate={() => {
-                          const lastUserMessage = messages.filter(m => m.role === 'user').pop();
-                          if (lastUserMessage) {
-                            sendMessage(lastUserMessage.content, lastUserMessage.taskType);
-                          }
-                        }}
-                      />
-                    </div>
-                  )}
                 </div>
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-muted rounded-lg px-4 py-2">
-                    <div className="flex gap-1">
-                      <span className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                      <span className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                      <span className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  <div className="bg-slate-100 px-4 py-3 rounded-2xl rounded-tl-none">
+                    <div className="flex gap-1.5 py-1">
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
                     </div>
                   </div>
                 </div>
@@ -259,27 +264,40 @@ export default function Dashboard() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
-            <form onSubmit={handleSubmit} className="flex gap-2">
-              <Input
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask Eve anything or describe what you need help with..."
-                disabled={isLoading}
-                className="flex-1"
-              />
-              <Button type="submit" disabled={isLoading || !input.trim()}>
-                <Send className="h-4 w-4" />
-              </Button>
-            </form>
+            {/* Input Section */}
+            <div className="p-4 bg-slate-50/50 border-t border-slate-100">
+              <form onSubmit={handleSubmit} className="flex gap-3 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm focus-within:border-slate-400 transition-all">
+                <Input
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Ask Eve anything or describe what you need help with..."
+                  disabled={isLoading}
+                  className="flex-1 border-0 shadow-none focus-visible:ring-0 text-sm placeholder:text-slate-400 bg-transparent"
+                />
+                <Button 
+                  type="submit" 
+                  disabled={isLoading || !input.trim()}
+                  className="bg-slate-900 hover:bg-slate-800 text-white rounded-lg h-9 w-9 p-0 shrink-0"
+                >
+                  <Send className="h-4 w-4" strokeWidth={1.5} />
+                </Button>
+              </form>
+              <div className="mt-2 flex justify-center">
+                <p className="text-[10px] text-slate-400 font-medium">Enterprise Grade AI Assistant • Precision Mode Active</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Department Cards */}
-        <div>
-          <h2 className="text-sm font-medium text-muted-foreground mb-3">🏢 Department Quick Tasks</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {/* Department Quick Tasks */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="w-1 h-4 bg-slate-900 rounded-full"></div>
+            <h2 className="text-sm font-medium text-slate-600 tracking-wide uppercase">Department Quick Tasks</h2>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {departments.map((dept) => (
               <DepartmentCard 
                 key={dept.id} 
@@ -293,6 +311,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

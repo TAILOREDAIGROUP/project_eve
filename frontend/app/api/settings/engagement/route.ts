@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 
 export async function GET(req: Request) {
+  const supabase = getSupabase();
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get('user_id');
 
@@ -27,6 +28,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const supabase = getSupabase();
   try {
     const { user_id, tenant_id, engagement_level } = await req.json();
 

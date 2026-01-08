@@ -11,77 +11,33 @@ interface AgenticTestResult {
   details: string;
 }
 
-// Store conversation history per session
-const conversationHistories: Record<string, { role: string, content: string }[]> = {};
-
-async function sendMessage(message: string, tenantId: string = 'test-tenant', sessionId?: string): Promise<string> {
-  const actualSessionId = sessionId || `session-${tenantId}`;
-  
-  // Initialize or get history
-  if (!conversationHistories[actualSessionId]) {
-    conversationHistories[actualSessionId] = [];
-  }
-  
-  // Add user message to history
-  conversationHistories[actualSessionId].push({ role: 'user', content: message });
-
+async function sendMessage(message: string, tenantId: string = 'test-tenant'): Promise<string> {
   const response = await fetch(TEST_API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      messages: conversationHistories[actualSessionId],
+      messages: [{ role: 'user', content: message }],
       tenant_id: tenantId,
-      session_id: actualSessionId,
     }),
   });
   if (!response.ok) {
     throw new Error(`API Error: ${response.status}`);
   }
-  const rawText = await response.text();
-  
-  // Parse AI SDK stream format (e.g., 0:"content")
-  const lines = rawText.split('\n');
-  let fullContent = '';
-  for (const line of lines) {
-    if (line.startsWith('0:')) {
-      try {
-        const content = JSON.parse(line.substring(2));
-        fullContent += content;
-      } catch (e) {
-        // Fallback for non-JSON content
-        fullContent += line.substring(2);
-      }
-    }
-  }
-  
-  // If no 0: lines found, try returning the raw text if it doesn't look like a stream
-  if (!fullContent && rawText) {
-    fullContent = rawText;
-  }
-  
-  // Add assistant response to history
-  if (fullContent) {
-    conversationHistories[actualSessionId].push({ role: 'assistant', content: fullContent });
-  }
-  
-  return fullContent;
+  const text = await response.text();
+  return text;
 }
 
 async function testMemoryPersistence(): Promise<AgenticTestResult> {
-  const tenantId = `test-memory-${Date.now()}`;
-  const sessionId = `session-${tenantId}`;
-  console.log(`\n🧠 Testing Memory Persistence (Tenant: ${tenantId})...`);
+  console.log('\n🧠 Testing Memory Persistence...');
   try {
     // Tell Eve something specific
-    await sendMessage('My favorite color is purple and my dog is named Max.', tenantId, sessionId);
+    await sendMessage('My favorite color is purple and my dog is named Max.');
 
-    // Wait for persistence
-    console.log('Waiting 5s for persistence...');
-    await new Promise(r => setTimeout(r, 5000));
+    // Wait a moment
+    await new Promise(r => setTimeout(r, 2000));
 
     // Ask about it
-    const response = await sendMessage('What is my favorite color and what is my dog\'s name?', tenantId, sessionId);
-    console.log(`Eve said: "${response}"`);
+    const response = await sendMessage('What is my favorite color and what is my dog\'s name?');
 
     const remembersColor = response.toLowerCase().includes('purple');
     const remembersDog = response.toLowerCase().includes('max');
@@ -108,29 +64,20 @@ async function testMemoryPersistence(): Promise<AgenticTestResult> {
 }
 
 async function testContextualUnderstanding(): Promise<AgenticTestResult> {
-  const tenantId = `test-context-${Date.now()}`;
-  const sessionId = `session-${tenantId}`;
-  console.log(`\n🎯 Testing Contextual Understanding (Tenant: ${tenantId})...`);
+  console.log('\n🎯 Testing Contextual Understanding...');
   try {
     // Set up context
-    await sendMessage('I am working on a marketing campaign for a new smartphone.', tenantId, sessionId);
-
-    // Wait for persistence
-    console.log('Waiting 3s for persistence...');
-    await new Promise(r => setTimeout(r, 3000));
+    await sendMessage('I am working on a marketing campaign for a new smartphone.');
 
     // Ask a follow-up that requires context
-    const response = await sendMessage('What are some good taglines I could use?', tenantId, sessionId);
-    console.log(`Eve said: "${response}"`);
+    const response = await sendMessage('What are some good taglines I could use?');
 
     // Check if response is contextually relevant
     const isRelevant =
       response.toLowerCase().includes('phone') ||
       response.toLowerCase().includes('mobile') ||
       response.toLowerCase().includes('smart') ||
-      response.toLowerCase().includes('tech') ||
-      response.toLowerCase().includes('campaign') ||
-      response.toLowerCase().includes('marketing');
+      response.toLowerCase().includes('tech');
 
     return {
       capability: 'Contextual Understanding',
@@ -151,11 +98,9 @@ async function testContextualUnderstanding(): Promise<AgenticTestResult> {
 }
 
 async function testGoalRecognition(): Promise<AgenticTestResult> {
-  const tenantId = `test-goal-${Date.now()}`;
-  console.log(`\n🎯 Testing Goal Recognition (Tenant: ${tenantId})...`);
+  console.log('\n🎯 Testing Goal Recognition...');
   try {
-    const response = await sendMessage('I want to learn Spanish in the next 3 months. Can you help me create a plan?', tenantId);
-    console.log(`Eve said: "${response}"`);
+    const response = await sendMessage('I want to learn Spanish in the next 3 months. Can you help me create a plan?');
 
     // Check if Eve recognizes this as a goal and provides structured help
     const hasStructure =
@@ -192,11 +137,9 @@ async function testGoalRecognition(): Promise<AgenticTestResult> {
 }
 
 async function testProactiveSuggestions(): Promise<AgenticTestResult> {
-  const tenantId = `test-proactive-${Date.now()}`;
-  console.log(`\n💡 Testing Proactive Suggestions (Tenant: ${tenantId})...`);
+  console.log('\n💡 Testing Proactive Suggestions...');
   try {
-    const response = await sendMessage('I just started a new business selling handmade candles.', tenantId);
-    console.log(`Eve said: "${response}"`);
+    const response = await sendMessage('I just started a new business selling handmade candles.');
 
     // Check if Eve proactively offers helpful suggestions
     const hasProactiveSuggestions =
@@ -226,31 +169,25 @@ async function testProactiveSuggestions(): Promise<AgenticTestResult> {
 }
 
 async function testAdaptiveTone(): Promise<AgenticTestResult> {
-  const tenantId = `test-tone-${Date.now()}`;
-  console.log(`\n🎭 Testing Adaptive Tone (Tenant: ${tenantId})...`);
+  console.log('\n🎭 Testing Adaptive Tone...');
   try {
     // Send a casual message
-    const casualResponse = await sendMessage('hey whats up! how r u doing today lol', tenantId);
-    console.log(`Eve (Casual) said: "${casualResponse}"`);
+    const casualResponse = await sendMessage('hey whats up! how r u doing today lol');
 
     // Send a formal message
-    const formalResponse = await sendMessage('Good afternoon. I would like to inquire about enterprise pricing options for your services.', tenantId);
-    console.log(`Eve (Formal) said: "${formalResponse}"`);
+    const formalResponse = await sendMessage('Good afternoon. I would like to inquire about enterprise pricing options for your services.');
 
     // Check if responses match the tone
     const casualHasInformalTone =
       casualResponse.includes('!') ||
       casualResponse.toLowerCase().includes('hey') ||
-      casualResponse.toLowerCase().includes('great') ||
-      casualResponse.toLowerCase().includes('doing');
+      casualResponse.toLowerCase().includes('great');
 
     const formalHasFormalTone =
       formalResponse.includes('Thank you') ||
       formalResponse.includes('pleased') ||
       formalResponse.includes('assist') ||
-      formalResponse.includes('information') ||
-      formalResponse.includes('regarding') ||
-      formalResponse.includes('options');
+      formalResponse.includes('information');
 
     const passed = casualHasInformalTone || formalHasFormalTone;
     const score = (casualHasInformalTone ? 50 : 0) + (formalHasFormalTone ? 50 : 0);

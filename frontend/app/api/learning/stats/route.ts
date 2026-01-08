@@ -52,7 +52,7 @@ export async function GET(req: Request) {
       taskCounts[e.task_title] = (taskCounts[e.task_title] || 0) + 1;
     });
     const topTasks = Object.entries(taskCounts)
-      .sort((a, b) => b - a[1])
+      .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([title, count]) => ({ title, count }));
 
@@ -62,7 +62,7 @@ export async function GET(req: Request) {
       deptCounts[e.department_id] = (deptCounts[e.department_id] || 0) + 1;
     });
     const topDepartments = Object.entries(deptCounts)
-      .sort((a, b) => b - a[1])
+      .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([name, count]) => ({ name, count }));
 

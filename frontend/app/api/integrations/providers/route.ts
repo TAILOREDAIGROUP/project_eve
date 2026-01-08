@@ -12,38 +12,39 @@ function getSupabase(): SupabaseClient | null {
   return supabase;
 }
 
+// Providers that are currently disabled (not configured in Nango yet)
+const DISABLED_PROVIDERS = ['microsoft365', 'quickbooks', 'zendesk'];
+
+// Default providers if database is not available
+const DEFAULT_PROVIDERS = [
+  { id: 'google', name: 'Google Workspace', icon: '🔵', description: 'Gmail, Google Drive, Calendar', category: 'productivity' },
+  { id: 'hubspot', name: 'HubSpot', icon: '🟠', description: 'CRM - Deals, Contacts, Companies', category: 'crm' },
+  { id: 'notion', name: 'Notion', icon: '⬛', description: 'Documents and databases', category: 'productivity' },
+  { id: 'shopify', name: 'Shopify', icon: '🛒', description: 'Orders, Products, Customers', category: 'finance' },
+  { id: 'slack', name: 'Slack', icon: '💬', description: 'Messages and channels', category: 'communication' },
+];
+
 export async function GET() {
   const db = getSupabase();
-  
-  if (!db) {
-    // Return default providers if no database
-    return NextResponse.json({
-      providers: [
-        { id: 'google', name: 'Google Workspace', icon: '🔵', description: 'Gmail, Drive, Calendar', category: 'productivity' },
-        { id: 'slack', name: 'Slack', icon: '💬', description: 'Messages and channels', category: 'communication' },
-        { id: 'hubspot', name: 'HubSpot', icon: '🟠', description: 'CRM - Deals, Contacts', category: 'crm' },
-        { id: 'quickbooks', name: 'QuickBooks', icon: '💚', description: 'Invoices, Expenses', category: 'finance' },
-        { id: 'notion', name: 'Notion', icon: '⬛', description: 'Documents and databases', category: 'productivity' },
-        { id: 'zendesk', name: 'Zendesk', icon: '🎫', description: 'Support tickets', category: 'crm' },
-        { id: 'shopify', name: 'Shopify', icon: '🛒', description: 'Orders, Products', category: 'finance' },
-        { id: 'microsoft365', name: 'Microsoft 365', icon: '🔷', description: 'Outlook, OneDrive, Teams', category: 'productivity' },
-      ]
-    });
-  }
 
-  try {
-    const { data, error } = await db
-      .from('integration_providers')
-      .select('*')
-      .eq('is_enabled', true)
-      .order('name');
+  if (db) {
+    try {
+      const { data, error } = await db
+        .from('integration_providers')
+        .select('*')
+        .eq('is_enabled', true)
+        .order('name');
 
-    if (error) {
-      return NextResponse.json({ providers: [] });
+      if (!error && data && data.length > 0) {
+        // Filter out disabled providers
+        const enabledProviders = data.filter(p => !DISABLED_PROVIDERS.includes(p.id));
+        return NextResponse.json({ providers: enabledProviders });
+      }
+    } catch (e) {
+      console.error('Error fetching providers:', e);
     }
-
-    return NextResponse.json({ providers: data || [] });
-  } catch (error) {
-    return NextResponse.json({ providers: [] });
   }
+
+  // Return default providers (already filtered)
+  return NextResponse.json({ providers: DEFAULT_PROVIDERS });
 }

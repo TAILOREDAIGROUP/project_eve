@@ -17,7 +17,7 @@ function getSupabase(): SupabaseClient | null {
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const db = getSupabase();
   
@@ -25,7 +25,7 @@ export async function DELETE(
     return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
   }
 
-  const { id } = params;
+  const { id } = await params;
 
   try {
     const { error } = await db

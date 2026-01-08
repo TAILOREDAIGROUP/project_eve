@@ -1,6 +1,6 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, Message } from 'ai';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 
 export const runtime = 'edge';
@@ -23,18 +23,61 @@ interface ConversationMessage {
   created_at: string;
 }
 
-// Security headers helper
-function getSecurityHeaders() {
-  return {
+// Helper to fetch integration data for context
+async function fetchIntegrationData(tenantId: string, integrations: any[]) {
+  const data: any = {};
+  
+  for (const integration of integrations) {
+    try {
+      if (integration.provider_id === 'google') {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/integrations/google/calendar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tenantId })
+        });
+        if (response.ok) {
+          data.calendar = await response.json();
+        }
+      }
+      
+      if (integration.provider_id === 'slack') {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/integrations/slack/threads`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tenantId, summarize: true })
+        });
+        if (response.ok) {
+          data.slack = await response.json();
+        }
+      }
+      
+      if (integration.provider_id === 'hubspot') {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/integrations/hubspot/deals`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tenantId })
+        });
+        if (response.ok) {
+          data.hubspot = await response.json();
+        }
+      }
+    } catch (error) {
+      console.warn(`[Chat] Failed to fetch ${integration.provider_id} data:`, error);
+    }
+  }
+  
+  return data;
+}
+
+export async function POST(req: Request) {
+  const supabase = getSupabase();
+  // Security headers helper
+  const securityHeaders = {
     'Content-Security-Policy': "default-src 'self'",
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
   };
-}
-
-export async function POST(req: Request) {
-  const securityHeaders = getSecurityHeaders();
 
   // Check for API key from Authorization header first, then env
   const authHeader = req.headers.get('Authorization');
@@ -49,14 +92,13 @@ export async function POST(req: Request) {
   }
 
   if (!apiKey) {
-    apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY || null;
+    apiKey = process.env.OPENROUTER_API_KEY || null;
   }
 
-  // Final check
   if (!apiKey) {
     return new Response(
-      JSON.stringify({ error: 'Authentication failed', code: 'AUTH_ERROR' }),
-      { status: 401, headers: { 'Content-Type': 'application/json', ...securityHeaders } }
+      JSON.stringify({ error: 'OPENROUTER_API_KEY is not configured' }),
+      { status: 500, headers: { 'Content-Type': 'application/json', ...securityHeaders } }
     );
   }
 
@@ -69,18 +111,18 @@ export async function POST(req: Request) {
     // Check request size
     const contentLength = req.headers.get('content-length');
     if (contentLength && parseInt(contentLength) > MAX_REQUEST_SIZE) {
-      return new Response(JSON.stringify({ error: 'Request too large' }), { status: 413, headers: securityHeaders });
+      return new Response(JSON.stringify({ error: 'Request too large' }), { status: 413 });
     }
 
     const { messages, tenant_id, session_id: providedSessionId } = await req.json();
 
     // Validate messages
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return new Response(JSON.stringify({ error: 'Invalid messages' }), { status: 400, headers: securityHeaders });
+      return new Response(JSON.stringify({ error: 'Invalid messages' }), { status: 400 });
     }
 
     if (messages.length > MAX_MESSAGES) {
-      return new Response(JSON.stringify({ error: 'Too many messages' }), { status: 400, headers: securityHeaders });
+      return new Response(JSON.stringify({ error: 'Too many messages' }), { status: 400 });
     }
 
     // Use provided session_id or generate based on tenant_id for persistence
@@ -88,7 +130,7 @@ export async function POST(req: Request) {
     const sessionId = providedSessionId || `session-${userId}`;
 
     // Rate limiting
-    const rateLimit = checkRateLimit(userId, req, 20);
+    const rateLimit = checkRateLimit(userId, req);
     const rateLimitHeaders = {
       'X-RateLimit-Limit': '20',
       'X-RateLimit-Remaining': rateLimit.remaining.toString(),
@@ -98,7 +140,7 @@ export async function POST(req: Request) {
     if (!rateLimit.allowed) {
       return new Response(JSON.stringify({ error: 'Too many requests' }), {
         status: 429,
-        headers: { 'Content-Type': 'application/json', ...rateLimitHeaders, ...securityHeaders },
+        headers: { 'Content-Type': 'application/json', ...rateLimitHeaders },
       });
     }
 
@@ -142,6 +184,56 @@ export async function POST(req: Request) {
     }
 
     // =========================================================================
+    // STEP 2.5: RETRIEVE CONNECTED INTEGRATIONS AND THEIR DATA
+    // =========================================================================
+    let integrationContext = '';
+    try {
+      const { data: integrations } = await supabase
+        .from('integrations')
+        .select('provider_id, status')
+        .eq('tenant_id', userId)
+        .eq('status', 'connected');
+
+      const integrationList = integrations?.length 
+        ? integrations.map(i => i.provider_id).join(', ')
+        : 'none';
+
+      // Fetch actual data from connected integrations
+      let realTimeData = '';
+      if (integrations && integrations.length > 0) {
+        const data = await fetchIntegrationData(userId, integrations);
+        
+        if (data.calendar?.events?.length > 0) {
+          const upcomingEvents = data.calendar.events.slice(0, 5);
+          realTimeData += `\n\n### Upcoming Calendar Events:\n`;
+          upcomingEvents.forEach((event: any) => {
+            realTimeData += `- ${event.title} at ${event.start}\n`;
+          });
+        }
+        
+        if (data.slack?.summaries?.length > 0) {
+          realTimeData += `\n\n### Slack Thread Summary:\n${data.slack.summaries[0].summary}`;
+        }
+        
+        if (data.hubspot?.analysis) {
+          realTimeData += `\n\n### HubSpot Pipeline:\n`;
+          realTimeData += `- Total Deals: ${data.hubspot.analysis.totalDeals}\n`;
+          realTimeData += `- Pipeline Value: $${data.hubspot.analysis.totalPipelineValue.toLocaleString()}\n`;
+        }
+      }
+
+      integrationContext = `\n\n## CONNECTED INTEGRATIONS
+Connected integrations: ${integrationList}.
+${realTimeData}
+If the user asks about a tool that isn't connected, let them know they can connect it at /dashboard/integrations.
+Use the real-time data above to answer questions about their calendar, Slack, or deals.`;
+
+      console.log(`[Integrations] Found ${integrations?.length || 0} connected integrations for tenant ${userId}`);
+    } catch (error) {
+      console.error('[Integrations] Failed to retrieve integrations:', error);
+    }
+
+    // =========================================================================
     // STEP 3: BUILD CONTEXT-AWARE SYSTEM PROMPT
     // =========================================================================
     let memoryContext = '';
@@ -174,7 +266,7 @@ export async function POST(req: Request) {
 - When asked about something the user previously told you, RECALL IT from your memory
 - Always acknowledge what you remember about the user
 - If you don't have information, say so honestly
-${memoryContext}${historyContext}
+${memoryContext}${historyContext}${integrationContext}
 
 ## CURRENT INTERACTION
 Respond helpfully to the user's message. If they've shared information before, use it to personalize your response.`;
@@ -184,22 +276,26 @@ Respond helpfully to the user's message. If they've shared information before, u
     // =========================================================================
     const fullMessages: Message[] = [];
     
-    // Add historical messages first
+    // Add historical messages first (filter out empty ones)
     conversationHistory.forEach((msg) => {
-      fullMessages.push({
-        id: crypto.randomUUID(),
-        role: msg.role,
-        content: msg.content,
-      });
+      if (msg.content && msg.content.trim()) {
+        fullMessages.push({
+          id: crypto.randomUUID(),
+          role: msg.role,
+          content: msg.content,
+        });
+      }
     });
 
-    // Add current messages (avoid duplicates)
+    // Add current messages (avoid duplicates and empty ones)
     messages.forEach((msg: Message) => {
-      const isDuplicate = fullMessages.some(
-        (existing) => existing.content === msg.content && existing.role === msg.role
-      );
-      if (!isDuplicate) {
-        fullMessages.push(msg);
+      if (msg.content && msg.content.trim()) {
+        const isDuplicate = fullMessages.some(
+          (existing) => existing.content === msg.content && existing.role === msg.role
+        );
+        if (!isDuplicate) {
+          fullMessages.push(msg);
+        }
       }
     });
 
@@ -226,10 +322,14 @@ Respond helpfully to the user's message. If they've shared information before, u
     // STEP 5: GENERATE RESPONSE
     // =========================================================================
     const result = await streamText({
-      model: openrouter('google/gemini-2.0-flash-001'),
+      model: openrouter('openai/gpt-4o-mini'),
       system: systemPrompt,
       messages: contextMessages,
       onFinish: async (event) => {
+        if (!event.text || !event.text.trim()) {
+          console.log('[Save] Skipping empty assistant response');
+          return;
+        }
         try {
           // Save assistant response to conversation history
           const { error: assistantError } = await supabase.from('conversations').insert({
@@ -257,10 +357,7 @@ Respond helpfully to the user's message. If they've shared information before, u
     return result.toDataStreamResponse({
       headers: {
         'X-Session-Id': sessionId,
-        'Content-Security-Policy': "default-src 'self'",
-        'X-Content-Type-Options': 'nosniff',
-        'X-Frame-Options': 'DENY',
-        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+        ...securityHeaders,
         ...rateLimitHeaders,
       },
     });
@@ -297,6 +394,7 @@ async function extractAndSaveMemories(
   userId: string,
   openrouter: ReturnType<typeof createOpenAI>
 ) {
+  const supabase = getSupabase();
   try {
     // Use AI to extract memorable facts from the conversation
     const extractionPrompt = `Analyze this conversation and extract any personal facts, preferences, or important information the user shared that should be remembered for future conversations.
@@ -316,7 +414,7 @@ If there are no memorable facts, return: {"memories": []}`;
 
     const { generateText } = await import('ai');
     const result = await generateText({
-      model: openrouter('google/gemini-2.0-flash-001'),
+      model: openrouter('openai/gpt-4o-mini'),
       prompt: extractionPrompt,
       temperature: 0.3,
     });
@@ -331,7 +429,7 @@ If there are no memorable facts, return: {"memories": []}`;
     // Save each memory
     for (const memory of parsed.memories) {
       if (!memory.content) continue;
-
+      
       // Check if similar memory already exists
       const { data: existing, error: checkError } = await supabase
         .from('memories')

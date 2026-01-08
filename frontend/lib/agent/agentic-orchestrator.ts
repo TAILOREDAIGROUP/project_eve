@@ -153,7 +153,7 @@ export class AgenticOrchestrator {
     reflectionScore = reflectionResult.reflection.scores.overall;
 
     // 2. Goal Detection
-    const goalDetection = await this.goalManager.detectGoalIntent(userQuery);
+    const goalDetection = await this.goalManager.detectGoal(userQuery);
     if (goalDetection.isGoal && goalDetection.goalData) {
       detectedGoal = true;
       // Create the goal in the background
@@ -161,7 +161,7 @@ export class AgenticOrchestrator {
     }
 
     // 3. Proactive Help (based on engagement level)
-    const userState = this.engagementManager.analyzeUserState(userQuery);
+    const userState = this.engagementManager.analyzeUserState(userQuery, []);
     if (this.engagementManager.shouldOfferHelp(userState)) {
       const helpOffer = this.engagementManager.generateHelpOffer(userState);
       if (helpOffer && !finalResponse.includes(helpOffer)) {

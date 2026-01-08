@@ -37,10 +37,12 @@ export interface ReviewRequest {
 export class ReviewService {
     private userId: string;
     private tenantId: string;
+    private backendUrl: string;
 
     constructor(userId: string, tenantId: string = 'default-tenant') {
         this.userId = userId;
         this.tenantId = tenantId;
+        this.backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
     }
 
     /**

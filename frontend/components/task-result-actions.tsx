@@ -69,58 +69,77 @@ export function TaskResultActions({
   };
 
   return (
-    <div className="flex items-center gap-2 mt-4 pt-4 border-t">
+    <div className="flex items-center gap-2 mt-6 pt-6 border-t border-slate-100">
       {/* Primary Actions */}
-      <Button variant="outline" size="sm" onClick={handleCopy}>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={handleCopy}
+        className="border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 text-xs font-medium"
+      >
         {copied ? (
           <>
-            <Check className="h-4 w-4 mr-1 text-green-500" />
-            Copied!
+            <Check className="h-3.5 w-3.5 mr-1.5 text-emerald-600" strokeWidth={2.5} />
+            Copied
           </>
         ) : (
           <>
-            <Copy className="h-4 w-4 mr-1" />
+            <Copy className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.5} />
             Copy
           </>
         )}
       </Button>
 
-      {taskType?.includes('email') && (
-        <Button variant="outline" size="sm" onClick={handleSendEmail}>
-          <Mail className="h-4 w-4 mr-1" />
-          Open in Email
+      {taskType?.toLowerCase().includes('email') && (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleSendEmail}
+          className="border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 text-xs font-medium"
+        >
+          <Mail className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.5} />
+          Email
         </Button>
       )}
 
-      <Button variant="outline" size="sm" onClick={handleCreateDoc}>
-        <Download className="h-4 w-4 mr-1" />
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={handleCreateDoc}
+        className="border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 text-xs font-medium"
+      >
+        <Download className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.5} />
         Save
       </Button>
 
       {/* More Actions Dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm">
-            <MoreHorizontal className="h-4 w-4" />
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="border-slate-200 text-slate-400 hover:text-slate-900 hover:bg-slate-50"
+          >
+            <MoreHorizontal className="h-4 w-4" strokeWidth={1.5} />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={onRegenerate}>
-            <RefreshCw className="h-4 w-4 mr-2" />
+        <DropdownMenuContent align="end" className="w-48 border-slate-200 shadow-lg">
+          <DropdownMenuItem onClick={onRegenerate} className="text-slate-600 focus:text-slate-900 focus:bg-slate-50">
+            <RefreshCw className="h-4 w-4 mr-2" strokeWidth={1.5} />
             Regenerate
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleCreateDoc}>
-            <FileText className="h-4 w-4 mr-2" />
-            Save as Document
+          <DropdownMenuItem onClick={handleCreateDoc} className="text-slate-600 focus:text-slate-900 focus:bg-slate-50">
+            <FileText className="h-4 w-4 mr-2" strokeWidth={1.5} />
+            Export as PDF
           </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Calendar className="h-4 w-4 mr-2" />
-            Create Follow-up Task
+          <DropdownMenuItem className="text-slate-600 focus:text-slate-900 focus:bg-slate-50">
+            <Calendar className="h-4 w-4 mr-2" strokeWidth={1.5} />
+            Schedule Follow-up
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem>
-            <Share className="h-4 w-4 mr-2" />
-            Share
+          <DropdownMenuSeparator className="bg-slate-100" />
+          <DropdownMenuItem className="text-slate-600 focus:text-slate-900 focus:bg-slate-50">
+            <Share className="h-4 w-4 mr-2" strokeWidth={1.5} />
+            Share Output
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -129,28 +148,27 @@ export function TaskResultActions({
       <div className="flex-1" />
       
       {feedbackGiven ? (
-        <Badge variant="outline" className="text-green-600">
-          <Check className="h-3 w-3 mr-1" />
-          Thanks for feedback!
+        <Badge variant="outline" className="text-emerald-700 bg-emerald-50 border-emerald-100 px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
+          <Check className="h-3 w-3 mr-1" strokeWidth={2.5} />
+          Feedback received
         </Badge>
       ) : (
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-muted-foreground mr-1">Helpful?</span>
+        <div className="flex items-center gap-1 bg-slate-50/50 rounded-lg p-0.5 border border-slate-100">
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 w-8 p-0 hover:bg-green-100 hover:text-green-600"
+            className="h-7 w-7 p-0 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
             onClick={() => handleFeedback('positive')}
           >
-            <ThumbsUp className="h-4 w-4" />
+            <ThumbsUp className="h-3.5 w-3.5" strokeWidth={1.5} />
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600"
+            className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"
             onClick={() => handleFeedback('negative')}
           >
-            <ThumbsDown className="h-4 w-4" />
+            <ThumbsDown className="h-3.5 w-3.5" strokeWidth={1.5} />
           </Button>
         </div>
       )}

@@ -1,18 +1,32 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   Check, 
-  X, 
   RefreshCw, 
-  ExternalLink,
   Shield,
   Zap,
-  AlertCircle
+  AlertCircle,
+  Mail,
+  MessageSquare,
+  BarChart3,
+  FileText,
+  ShoppingCart
 } from 'lucide-react';
+import { getNango, PROVIDER_MAP } from '@/lib/nango';
+import Nango from '@nangohq/frontend';
+
+// Professional icon mapping (no emojis)
+const PROVIDER_ICONS: Record<string, React.ComponentType<any>> = {
+  'google': Mail,
+  'hubspot': BarChart3,
+  'notion': FileText,
+  'shopify': ShoppingCart,
+  'slack': MessageSquare,
+};
 
 interface Provider {
   id: string;
@@ -26,16 +40,20 @@ interface Integration {
   id: string;
   provider_id: string;
   status: 'pending' | 'connected' | 'error' | 'revoked';
-  account_info: { email?: string; name?: string };
+  account_info: { email?: string; connection_id?: string };
   last_sync_at: string | null;
   error_message: string | null;
 }
+
+// Disabled providers (not configured in Nango yet)
+const DISABLED_PROVIDERS = ['microsoft365', 'quickbooks', 'zendesk'];
 
 export default function IntegrationsPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const TENANT_ID = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -45,6 +63,7 @@ export default function IntegrationsPage() {
 
   const loadData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [providersRes, integrationsRes] = await Promise.all([
         fetch('/api/integrations/providers'),
@@ -53,26 +72,84 @@ export default function IntegrationsPage() {
 
       if (providersRes.ok) {
         const data = await providersRes.json();
-        setProviders(data.providers || []);
+        // Filter out disabled providers
+        const enabledProviders = (data.providers || []).filter(
+          (p: Provider) => !DISABLED_PROVIDERS.includes(p.id)
+        );
+        setProviders(enabledProviders);
       }
 
       if (integrationsRes.ok) {
         const data = await integrationsRes.json();
         setIntegrations(data.integrations || []);
       }
-    } catch (error) {
-      console.error('Failed to load integrations:', error);
+    } catch (err) {
+      console.error('Failed to load integrations:', err);
+      setError('Failed to load integrations');
     }
     setLoading(false);
   };
 
   const connectProvider = async (providerId: string) => {
     setConnecting(providerId);
+    setError(null);
+
+    const nangoIntegrationId = PROVIDER_MAP[providerId];
     
-    // In production, this would redirect to OAuth flow
-    // For now, simulate a connection
+    if (!nangoIntegrationId) {
+      setError(`Provider ${providerId} is not configured`);
+      setConnecting(null);
+      return;
+    }
+
     try {
-      const res = await fetch('/api/integrations/connect', {
+      // 1. Get session token from backend
+      const response = await fetch('/api/integrations/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          tenantId: TENANT_ID,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create Nango session');
+      }
+
+      const { sessionToken } = await response.json();
+
+      // 2. Open Nango Connect UI with the session token
+      const nangoUrl = `https://connect.nango.dev/?session_token=${sessionToken}`;
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      
+      const popup = window.open(
+        nangoUrl,
+        'nango-connect',
+        `width=${width},height=${height},left=${left},top=${top}`
+      );
+
+      // 3. Poll for connection completion (simplified for this UI)
+      const pollInterval = setInterval(async () => {
+        if (popup?.closed) {
+          clearInterval(pollInterval);
+          await loadData();
+          setConnecting(null);
+        }
+      }, 2000);
+
+    } catch (err: any) {
+      console.error('Nango connection error:', err);
+      setError(err.message || 'Failed to connect. Please try again.');
+      setConnecting(null);
+    }
+  };
+
+  const simulatedConnect = async (providerId: string) => {
+    try {
+      await fetch('/api/integrations/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -81,207 +158,186 @@ export default function IntegrationsPage() {
           provider_id: providerId,
         }),
       });
-
-      if (res.ok) {
-        await loadData();
-      }
-    } catch (error) {
-      console.error('Failed to connect:', error);
+      await loadData();
+    } catch (err) {
+      console.error('Failed to connect:', err);
     }
-    
-    setConnecting(null);
   };
 
   const disconnectProvider = async (integrationId: string) => {
     try {
-      await fetch(`/api/integrations/${integrationId}`, {
-        method: 'DELETE',
-      });
+      await fetch(`/api/integrations/${integrationId}`, { method: 'DELETE' });
       await loadData();
-    } catch (error) {
-      console.error('Failed to disconnect:', error);
+    } catch (err) {
+      console.error('Failed to disconnect:', err);
     }
   };
 
-  const getIntegration = (providerId: string) => 
-    integrations.find(i => i.provider_id === providerId);
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'productivity': return 'bg-blue-100 text-blue-800';
-      case 'communication': return 'bg-purple-100 text-purple-800';
-      case 'crm': return 'bg-orange-100 text-orange-800';
-      case 'finance': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  const getIntegration = (providerId: string) =>
+    integrations.find((i) => i.provider_id === providerId);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
+      <div className="flex items-center justify-center min-h-screen bg-slate-50/50">
+        <RefreshCw className="h-6 w-6 text-slate-400 animate-spin" />
       </div>
     );
   }
 
-  const connectedCount = integrations.filter(i => i.status === 'connected').length;
+  const connectedCount = integrations.filter((i) => i.status === 'connected').length;
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Connect Your Tools</h1>
-        <p className="text-muted-foreground mt-1">
-          Link your business systems so Eve can access your data and help you work smarter
-        </p>
-      </div>
+    <div className="min-h-screen bg-slate-50/50">
+      <div className="max-w-4xl mx-auto p-8 space-y-8">
+        
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Connect Your Tools</h1>
+          <p className="text-slate-500 mt-1">
+            Link your business systems so Eve can access your data and help you work smarter
+          </p>
+        </div>
 
-      {/* Status Banner */}
-      <Card className={connectedCount > 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}>
-        <CardContent className="py-4">
-          <div className="flex items-center gap-3">
-            {connectedCount > 0 ? (
-              <>
-                <Zap className="h-5 w-5 text-green-600" />
-                <div>
-                  <p className="font-medium text-green-800">
-                    {connectedCount} tool{connectedCount !== 1 ? 's' : ''} connected
-                  </p>
-                  <p className="text-sm text-green-600">
-                    Eve can now access data from these systems to help you
-                  </p>
-                </div>
-              </>
-            ) : (
-              <>
-                <AlertCircle className="h-5 w-5 text-amber-600" />
-                <div>
-                  <p className="font-medium text-amber-800">No tools connected yet</p>
-                  <p className="text-sm text-amber-600">
-                    Connect at least one tool to unlock Eve's full potential
-                  </p>
-                </div>
-              </>
-            )}
+        {/* Error Banner */}
+        {error && (
+          <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle className="h-4 w-4 text-red-600" strokeWidth={1.5} />
+            <span className="text-sm text-red-700">{error}</span>
           </div>
-        </CardContent>
-      </Card>
+        )}
 
-      {/* What Eve Can Do */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">What happens when you connect?</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-purple-100">
-                <Shield className="h-4 w-4 text-purple-600" />
-              </div>
-              <div>
-                <h4 className="font-medium text-sm">Secure Access</h4>
-                <p className="text-xs text-muted-foreground">Your credentials are encrypted. You control what Eve can see.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-blue-100">
-                <RefreshCw className="h-4 w-4 text-blue-600" />
-              </div>
-              <div>
-                <h4 className="font-medium text-sm">Auto-Sync</h4>
-                <p className="text-xs text-muted-foreground">Eve stays up to date with your latest data automatically.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-green-100">
-                <Zap className="h-4 w-4 text-green-600" />
-              </div>
-              <div>
-                <h4 className="font-medium text-sm">Smart Answers</h4>
-                <p className="text-xs text-muted-foreground">Ask questions across all your tools in one place.</p>
-              </div>
+        {/* Status Banner */}
+        {connectedCount > 0 && (
+          <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+            <Zap className="h-4 w-4 text-emerald-600" strokeWidth={1.5} />
+            <div>
+              <p className="text-sm font-medium text-emerald-800">
+                {connectedCount} tool{connectedCount !== 1 ? 's' : ''} connected
+              </p>
+              <p className="text-xs text-emerald-600">
+                Eve can now access data from these systems to help you
+              </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        )}
 
-      {/* Providers Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {providers.map((provider) => {
-          const integration = getIntegration(provider.id);
-          const isConnected = integration?.status === 'connected';
-          const isConnecting = connecting === provider.id;
+        {/* Benefits */}
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-sm font-medium text-slate-600 tracking-wide uppercase">
+              What happens when you connect?
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-6">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-md bg-slate-100">
+                  <Shield className="h-4 w-4 text-slate-600" strokeWidth={1.5} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-slate-800">Secure Access</h4>
+                  <p className="text-xs text-slate-500 mt-1">OAuth 2.0 — we never see your password</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-md bg-slate-100">
+                  <RefreshCw className="h-4 w-4 text-slate-600" strokeWidth={1.5} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-slate-800">Auto-Sync</h4>
+                  <p className="text-xs text-slate-500 mt-1">Data stays fresh automatically</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-md bg-slate-100">
+                  <Zap className="h-4 w-4 text-slate-600" strokeWidth={1.5} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-slate-800">Smart Answers</h4>
+                  <p className="text-xs text-slate-500 mt-1">Ask questions across all your tools</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          return (
-            <Card key={provider.id} className={isConnected ? 'border-green-200' : ''}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl">{provider.icon}</span>
-                    <div>
-                      <h3 className="font-semibold">{provider.name}</h3>
-                      <p className="text-sm text-muted-foreground">{provider.description}</p>
-                      <Badge className={`mt-1 text-xs ${getCategoryColor(provider.category)}`}>
-                        {provider.category}
-                      </Badge>
+        {/* Providers Grid */}
+        <div className="grid grid-cols-2 gap-4">
+          {providers.map((provider) => {
+            const integration = getIntegration(provider.id);
+            const isConnected = integration?.status === 'connected';
+            const isConnecting = connecting === provider.id;
+            const Icon = PROVIDER_ICONS[provider.id] || FileText;
+
+            return (
+              <Card 
+                key={provider.id} 
+                className={`border-slate-200 shadow-sm transition-all ${
+                  isConnected ? 'border-emerald-200 bg-emerald-50/30' : 'hover:border-slate-300'
+                }`}
+              >
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={`p-3 rounded-lg ${isConnected ? 'bg-emerald-100' : 'bg-slate-100'}`}>
+                        <Icon className={`h-5 w-5 ${isConnected ? 'text-emerald-600' : 'text-slate-600'}`} strokeWidth={1.5} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-800">{provider.name}</h3>
+                        <p className="text-xs text-slate-500 mt-0.5">{provider.description}</p>
+                        <Badge 
+                          variant="outline" 
+                          className="mt-2 text-xs font-normal border-slate-200 text-slate-500"
+                        >
+                          {provider.category}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2">
+                      {isConnected ? (
+                        <>
+                          <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white text-xs">
+                            <Check className="h-3 w-3 mr-1" strokeWidth={2} />
+                            Connected
+                          </Badge>
+                          <button
+                            onClick={() => disconnectProvider(integration!.id)}
+                            className="text-xs text-slate-400 hover:text-red-500 transition-colors"
+                          >
+                            Disconnect
+                          </button>
+                        </>
+                      ) : (
+                        <Button 
+                          onClick={() => connectProvider(provider.id)} 
+                          disabled={isConnecting}
+                          size="sm"
+                          className="bg-slate-900 hover:bg-slate-800 text-white text-xs"
+                        >
+                          {isConnecting ? (
+                            <>
+                              <RefreshCw className="h-3 w-3 mr-1.5 animate-spin" strokeWidth={2} />
+                              Connecting
+                            </>
+                          ) : (
+                            'Connect'
+                          )}
+                        </Button>
+                      )}
                     </div>
                   </div>
-                  
-                  <div className="flex flex-col items-end gap-2">
-                    {isConnected ? (
-                      <>
-                        <Badge className="bg-green-500">
-                          <Check className="h-3 w-3 mr-1" />
-                          Connected
-                        </Badge>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="text-red-500 hover:text-red-700"
-                          onClick={() => disconnectProvider(integration!.id)}
-                        >
-                          Disconnect
-                        </Button>
-                      </>
-                    ) : (
-                      <Button 
-                        onClick={() => connectProvider(provider.id)}
-                        disabled={isConnecting}
-                      >
-                        {isConnecting ? (
-                          <>
-                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                            Connecting...
-                          </>
-                        ) : (
-                          'Connect'
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                </div>
 
-                {isConnected && integration?.account_info?.email && (
-                  <div className="mt-3 pt-3 border-t text-sm text-muted-foreground">
-                    Connected as: {integration.account_info.email}
-                    {integration.last_sync_at && (
-                      <span className="ml-2">
-                        • Last synced: {new Date(integration.last_sync_at).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {integration?.status === 'error' && (
-                  <div className="mt-3 pt-3 border-t text-sm text-red-500 flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4" />
-                    {integration.error_message || 'Connection error'}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+                  {isConnected && integration?.account_info?.email && (
+                    <div className="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                      Connected as: <span className="font-medium text-slate-600">{integration.account_info.email}</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

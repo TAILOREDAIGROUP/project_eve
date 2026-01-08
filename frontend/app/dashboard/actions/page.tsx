@@ -176,7 +176,7 @@ export default function ActionsPage() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <Tabs defaultValue="all" className="w-full" onValueChange={(v) => setFilter(v as any)}>
+            <Tabs defaultValue="all" className="w-full" onValueChange={(v: string) => setFilter(v as any)}>
               <TabsList>
                 <TabsTrigger value="all">All Actions</TabsTrigger>
                 <TabsTrigger value="executed">Executed</TabsTrigger>

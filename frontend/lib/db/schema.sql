@@ -355,3 +355,205 @@ CREATE INDEX IF NOT EXISTS idx_knowledge_entities_type ON knowledge_entities(typ
 CREATE INDEX IF NOT EXISTS idx_knowledge_entities_name ON knowledge_entities(name);
 CREATE INDEX IF NOT EXISTS idx_knowledge_entities_mentions ON knowledge_entities(mention_count DESC);
 CREATE INDEX IF NOT EXISTS idx_knowledge_relationships_tenant ON knowledge_relationships(tenant_id);
+
+-- ============================================================================
+-- ADMIN & PROMPT MANAGEMENT TABLES
+-- ============================================================================
+
+-- Department prompts table for admin customization
+CREATE TABLE IF NOT EXISTS department_prompts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id TEXT NOT NULL UNIQUE,
+  departments JSONB NOT NULL DEFAULT '[]',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_department_prompts_tenant ON department_prompts(tenant_id);
+
+ALTER TABLE department_prompts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all department_prompts" ON department_prompts FOR ALL USING (true);
+
+-- ============================================================================
+-- INTEGRATIONS & CONNECTORS
+-- ============================================================================
+
+-- Available integration providers
+CREATE TABLE IF NOT EXISTS integration_providers (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  icon TEXT NOT NULL,
+  description TEXT,
+  category TEXT NOT NULL, -- 'communication', 'crm', 'finance', 'productivity', 'storage'
+  auth_type TEXT NOT NULL DEFAULT 'oauth2', -- 'oauth2', 'api_key', 'basic'
+  scopes JSONB DEFAULT '[]',
+  is_enabled BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- User's connected integrations
+CREATE TABLE IF NOT EXISTS integrations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  provider_id TEXT NOT NULL REFERENCES integration_providers(id),
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'connected', 'error', 'revoked'
+  access_token TEXT, -- encrypted in production
+  refresh_token TEXT, -- encrypted in production
+  token_expires_at TIMESTAMPTZ,
+  scopes JSONB DEFAULT '[]',
+  account_info JSONB DEFAULT '{}', -- email, name, org from provider
+  last_sync_at TIMESTAMPTZ,
+  error_message TEXT,
+  connected_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(tenant_id, provider_id)
+);
+
+-- Synced data from integrations (normalized)
+CREATE TABLE IF NOT EXISTS synced_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id TEXT NOT NULL,
+  integration_id UUID REFERENCES integrations(id) ON DELETE CASCADE,
+  provider_id TEXT NOT NULL,
+  record_type TEXT NOT NULL, -- 'email', 'document', 'deal', 'contact', 'ticket', 'invoice', 'message', 'event'
+  external_id TEXT NOT NULL, -- ID in the source system
+  title TEXT,
+  content TEXT,
+  metadata JSONB DEFAULT '{}',
+  url TEXT, -- deep link back to source
+  created_at_source TIMESTAMPTZ,
+  updated_at_source TIMESTAMPTZ,
+  synced_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(tenant_id, provider_id, external_id)
+);
+
+-- Vector embeddings for semantic search
+CREATE TABLE IF NOT EXISTS record_embeddings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  record_id UUID REFERENCES synced_records(id) ON DELETE CASCADE,
+  tenant_id TEXT NOT NULL,
+  embedding vector(1536), -- OpenAI ada-002 dimension
+  chunk_index INTEGER DEFAULT 0,
+  chunk_text TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Action logs (audit trail for write operations)
+CREATE TABLE IF NOT EXISTS action_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  action_type TEXT NOT NULL, -- 'send_email', 'create_deal', 'create_ticket', 'update_record'
+  provider_id TEXT,
+  task_id TEXT, -- which department task triggered this
+  prompt_used TEXT,
+  input_data JSONB,
+  output_data JSONB,
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'confirmed', 'executed', 'failed', 'cancelled'
+  error_message TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  executed_at TIMESTAMPTZ
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_integrations_tenant ON integrations(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_integrations_status ON integrations(status);
+CREATE INDEX IF NOT EXISTS idx_synced_records_tenant ON synced_records(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_synced_records_type ON synced_records(record_type);
+CREATE INDEX IF NOT EXISTS idx_synced_records_provider ON synced_records(provider_id);
+CREATE INDEX IF NOT EXISTS idx_record_embeddings_tenant ON record_embeddings(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_action_logs_tenant ON action_logs(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_action_logs_status ON action_logs(status);
+
+-- RLS
+ALTER TABLE integration_providers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE integrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE synced_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE record_embeddings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE action_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow all integration_providers" ON integration_providers FOR ALL USING (true);
+CREATE POLICY "Allow all integrations" ON integrations FOR ALL USING (true);
+CREATE POLICY "Allow all synced_records" ON synced_records FOR ALL USING (true);
+CREATE POLICY "Allow all record_embeddings" ON record_embeddings FOR ALL USING (true);
+CREATE POLICY "Allow all action_logs" ON action_logs FOR ALL USING (true);
+
+-- Seed default providers
+INSERT INTO integration_providers (id, name, icon, description, category, auth_type, scopes) VALUES
+  ('google', 'Google Workspace', '🔵', 'Gmail, Google Drive, Calendar', 'productivity', 'oauth2', '["gmail.readonly", "drive.readonly", "calendar.readonly"]'),
+  ('slack', 'Slack', '💬', 'Messages and channels', 'communication', 'oauth2', '["channels:read", "chat:write", "users:read"]'),
+  ('hubspot', 'HubSpot', '🟠', 'CRM - Deals, Contacts, Companies', 'crm', 'oauth2', '["crm.objects.contacts.read", "crm.objects.deals.read"]'),
+  ('quickbooks', 'QuickBooks', '💚', 'Invoices, Expenses, Reports', 'finance', 'oauth2', '["com.intuit.quickbooks.accounting"]'),
+  ('notion', 'Notion', '⬛', 'Documents and databases', 'productivity', 'oauth2', '["read_content"]'),
+  ('zendesk', 'Zendesk', '🎫', 'Support tickets and customers', 'crm', 'oauth2', '["tickets:read", "users:read"]'),
+  ('shopify', 'Shopify', '🛒', 'Orders, Products, Customers', 'finance', 'oauth2', '["read_orders", "read_products", "read_customers"]'),
+  ('microsoft365', 'Microsoft 365', '🔷', 'Outlook, OneDrive, Teams', 'productivity', 'oauth2', '["Mail.Read", "Files.Read", "Calendars.Read"]')
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
+-- LEARNING & INTELLIGENCE LAYER
+-- ============================================================================
+
+-- Task execution history (what tasks users run most)
+CREATE TABLE IF NOT EXISTS task_executions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  department_id TEXT NOT NULL,
+  task_id TEXT NOT NULL,
+  task_title TEXT NOT NULL,
+  prompt_used TEXT NOT NULL,
+  input_values JSONB DEFAULT '{}', -- filled bracket values
+  response_summary TEXT,
+  feedback TEXT, -- 'positive', 'negative', null
+  execution_time_ms INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Learned patterns per tenant (what Eve has learned about this business)
+CREATE TABLE IF NOT EXISTS business_patterns (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id TEXT NOT NULL,
+  pattern_type TEXT NOT NULL, -- 'terminology', 'preference', 'workflow', 'entity', 'style'
+  pattern_key TEXT NOT NULL,
+  pattern_value TEXT NOT NULL,
+  confidence INTEGER DEFAULT 50, -- 0-100
+  source TEXT, -- 'explicit' (user told us), 'inferred' (learned from usage)
+  example_context TEXT,
+  usage_count INTEGER DEFAULT 1,
+  last_used_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(tenant_id, pattern_type, pattern_key)
+);
+
+-- Business glossary (company-specific terms Eve learns)
+CREATE TABLE IF NOT EXISTS business_glossary (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id TEXT NOT NULL,
+  term TEXT NOT NULL,
+  definition TEXT NOT NULL,
+  category TEXT, -- 'product', 'process', 'team', 'customer', 'metric'
+  aliases JSONB DEFAULT '[]',
+  created_by TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(tenant_id, term)
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_task_executions_tenant ON task_executions(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_task_executions_task ON task_executions(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_executions_created ON task_executions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_business_patterns_tenant ON business_patterns(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_business_patterns_type ON business_patterns(pattern_type);
+CREATE INDEX IF NOT EXISTS idx_business_glossary_tenant ON business_glossary(tenant_id);
+
+-- RLS
+ALTER TABLE task_executions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE business_patterns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE business_glossary ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow all task_executions" ON task_executions FOR ALL USING (true);
+CREATE POLICY "Allow all business_patterns" ON business_patterns FOR ALL USING (true);
+CREATE POLICY "Allow all business_glossary" ON business_glossary FOR ALL USING (true);

@@ -273,4 +273,36 @@ export class EngagementManager {
 
     return null;
   }
+
+  /**
+   * Determine if Eve should do a periodic check-in
+   */
+  shouldCheckIn(interactionCount: number): boolean {
+    const config = this.getConfig();
+    if (!config.behaviors.proactiveCheckIns) return false;
+
+    const frequencies = {
+      rare: 20,
+      moderate: 10,
+      frequent: 5
+    };
+
+    const threshold = frequencies[config.behaviors.checkInFrequency] || 10;
+    return interactionCount > 0 && interactionCount % threshold === 0;
+  }
+
+  /**
+   * Get a check-in message based on engagement level
+   */
+  getCheckInMessage(): string {
+    const config = this.getConfig();
+    
+    const messages = {
+      1: "I'm just checking in to see if there's anything I can help lighten your load with.",
+      2: "I've been monitoring our progress. Is there anything routine I can take off your hands right now?",
+      3: "I'm ready to help with your next priority. Should I proactively handle some of your pending tasks, or would you like to walk through something together?"
+    };
+
+    return messages[config.level as keyof typeof messages] || messages[2];
+  }
 }
