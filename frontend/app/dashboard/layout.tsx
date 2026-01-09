@@ -1,5 +1,7 @@
 'use client';
 
+// Dashboard layout with consolidated navigation (5 tabs)
+
 import React from 'react';
 import { 
   Settings, 
