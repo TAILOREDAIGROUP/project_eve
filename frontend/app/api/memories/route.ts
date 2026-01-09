@@ -1,7 +1,14 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
+import { auth } from '@clerk/nextjs/server';
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
+  const { userId } = await auth();
+
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const db = getSupabase();
   
   // Check if we have valid config
@@ -16,13 +23,6 @@ export async function GET(req: Request) {
         { id: '3', content: 'User company is Tailored AI Group', memory_type: 'fact', importance: 10, created_at: new Date().toISOString() },
       ]
     });
-  }
-
-  const { searchParams } = new URL(req.url);
-  const userId = searchParams.get('user_id');
-
-  if (!userId) {
-    return NextResponse.json({ error: 'user_id required' }, { status: 400 });
   }
 
   try {

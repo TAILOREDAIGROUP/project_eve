@@ -1,15 +1,15 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
+import { auth } from '@clerk/nextjs/server';
 
-export async function GET(req: Request) {
-  const supabase = getSupabase();
-  const { searchParams } = new URL(req.url);
-  const userId = searchParams.get('user_id');
+export async function GET(req: NextRequest) {
+  const { userId } = await auth();
 
   if (!userId) {
-    return NextResponse.json({ error: 'user_id required' }, { status: 400 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const supabase = getSupabase();
   try {
     const { data, error } = await supabase
       .from('user_settings')
@@ -27,14 +27,20 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const { userId } = await auth();
+
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const supabase = getSupabase();
   try {
-    const { user_id, tenant_id, engagement_level } = await req.json();
+    const { engagement_level } = await req.json();
 
-    if (!user_id || !engagement_level) {
+    if (engagement_level === undefined) {
       return NextResponse.json(
-        { error: 'user_id and engagement_level required' },
+        { error: 'engagement_level required' },
         { status: 400 }
       );
     }
@@ -47,8 +53,8 @@ export async function POST(req: Request) {
     }
 
     const { error } = await supabase.from('user_settings').upsert({
-      user_id,
-      tenant_id: tenant_id || user_id,
+      user_id: userId,
+      tenant_id: userId,
       engagement_level,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });

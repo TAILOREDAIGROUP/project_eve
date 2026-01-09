@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import { WelcomeEmptyState } from '@/components/welcome-empty-state';
 import { 
   Brain, 
   Target, 
@@ -21,7 +23,18 @@ import {
   MessageSquare,
   ThumbsUp,
   ThumbsDown,
-  ArrowRight
+  ArrowRight,
+  Sparkles,
+  History,
+  BarChart3,
+  BookOpen,
+  Send,
+  Users,
+  Calendar,
+  RefreshCw,
+  XCircle,
+  Download,
+  FileText
 } from 'lucide-react';
 
 interface Memory {
@@ -42,7 +55,55 @@ interface Goal {
   subtasks: { id: string; description: string; status: string }[];
 }
 
+interface TaskExecution {
+  id: string;
+  task_title: string;
+  department_id: string;
+  feedback: 'positive' | 'negative' | null;
+  created_at: string;
+}
+
+interface BusinessPattern {
+  id: string;
+  pattern_type: string;
+  pattern_key: string;
+  pattern_value: string;
+  confidence: number;
+  source: string;
+  usage_count: number;
+}
+
+interface GlossaryTerm {
+  id: string;
+  term: string;
+  definition: string;
+  category: string;
+}
+
+interface LearningStats {
+  totalExecutions: number;
+  positiveRate: number;
+  topTasks: { title: string; count: number }[];
+  topDepartments: { name: string; count: number }[];
+  patternsLearned: number;
+  glossaryTerms: number;
+}
+
+interface ActionLog {
+  id: string;
+  action_type: string;
+  provider_id: string;
+  task_id: string;
+  status: 'pending' | 'confirmed' | 'executed' | 'failed' | 'cancelled';
+  input_data: Record<string, any>;
+  output_data: Record<string, any>;
+  error_message: string | null;
+  created_at: string;
+  executed_at: string | null;
+}
+
 export default function IntelligenceDashboard() {
+  const { userId } = useAuth();
   const [memories, setMemories] = useState<Memory[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [engagementLevel, setEngagementLevel] = useState({ level: 2, name: 'Co-Worker' });
@@ -50,17 +111,30 @@ export default function IntelligenceDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
-  const TENANT_ID = '550e8400-e29b-41d4-a716-446655440000';
+  // Learning states
+  const [stats, setStats] = useState<LearningStats | null>(null);
+  const [patterns, setPatterns] = useState<BusinessPattern[]>([]);
+  const [glossary, setGlossary] = useState<GlossaryTerm[]>([]);
+  const [recentExecutions, setRecentExecutions] = useState<TaskExecution[]>([]);
+  const [newTerm, setNewTerm] = useState({ term: '', definition: '', category: 'general' });
+  const [showAddTerm, setShowAddTerm] = useState(false);
+
+  // Activity states
+  const [actions, setActions] = useState<ActionLog[]>([]);
+  const [actionFilter, setActionFilter] = useState<'all' | 'executed' | 'failed' | 'pending'>('all');
 
   useEffect(() => {
-    fetchAllData();
-  }, []);
+    if (userId) {
+      fetchAllData();
+    }
+  }, [userId]);
 
   const fetchAllData = async () => {
+    if (!userId) return;
     setLoading(true);
     try {
       // Fetch engagement level
-      const engRes = await fetch(`/api/settings/engagement?user_id=${TENANT_ID}`);
+      const engRes = await fetch('/api/settings/engagement');
       if (engRes.ok) {
         const engData = await engRes.json();
         const names: Record<number, string> = { 1: 'Sounding Board', 2: 'Co-Worker', 3: 'Personal Assistant' };
@@ -68,17 +142,47 @@ export default function IntelligenceDashboard() {
       }
 
       // Fetch memories
-      const memRes = await fetch(`/api/memories?user_id=${TENANT_ID}`);
+      const memRes = await fetch('/api/memories');
       if (memRes.ok) {
         const memData = await memRes.json();
         setMemories(memData.memories || []);
       }
 
       // Fetch goals
-      const goalRes = await fetch(`/api/goals?tenant_id=${TENANT_ID}&user_id=${TENANT_ID}`);
+      const goalRes = await fetch('/api/goals');
       if (goalRes.ok) {
         const goalData = await goalRes.json();
         setGoals(goalData.goals || []);
+      }
+
+      // Fetch Learning data
+      const [statsRes, patternsRes, glossaryRes, executionsRes] = await Promise.all([
+        fetch('/api/learning/stats'),
+        fetch('/api/learning/patterns'),
+        fetch('/api/learning/glossary'),
+        fetch('/api/learning/executions?limit=10'),
+      ]);
+
+      if (statsRes.ok) setStats(await statsRes.json());
+      if (patternsRes.ok) {
+        const data = await patternsRes.json();
+        setPatterns(data.patterns || []);
+      }
+      if (glossaryRes.ok) {
+        const data = await glossaryRes.json();
+        setGlossary(data.terms || []);
+      }
+      if (executionsRes.ok) {
+        const data = await executionsRes.json();
+        setRecentExecutions(data.executions || []);
+      }
+
+      // Fetch Action data
+      const TENANT_ID = '550e8400-e29b-41d4-a716-446655440000';
+      const actionRes = await fetch(`/api/actions?tenant_id=${TENANT_ID}`);
+      if (actionRes.ok) {
+        const data = await actionRes.json();
+        setActions(data.actions || []);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -96,7 +200,7 @@ export default function IntelligenceDashboard() {
   };
 
   const createGoal = async () => {
-    if (!newGoal.trim()) return;
+    if (!newGoal.trim() || !userId) return;
     
     try {
       const res = await fetch('/api/goals', {
@@ -104,8 +208,6 @@ export default function IntelligenceDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: newGoal,
-          user_id: TENANT_ID,
-          tenant_id: TENANT_ID,
         }),
       });
       
@@ -119,6 +221,81 @@ export default function IntelligenceDashboard() {
     }
   };
 
+  const addGlossaryTerm = async () => {
+    if (!newTerm.term || !newTerm.definition || !userId) return;
+    try {
+      const res = await fetch('/api/learning/glossary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTerm),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGlossary([...glossary, data.term]);
+        setNewTerm({ term: '', definition: '', category: 'general' });
+        setShowAddTerm(false);
+      }
+    } catch (error) {
+      console.error('Failed to add term:', error);
+    }
+  };
+
+  const deleteGlossaryTerm = async (termId: string) => {
+    try {
+      await fetch(`/api/learning/glossary/${termId}`, { method: 'DELETE' });
+      setGlossary(glossary.filter(t => t.id !== termId));
+    } catch (error) {
+      console.error('Failed to delete term:', error);
+    }
+  };
+
+  const getPatternTypeColor = (type: string) => {
+    switch (type) {
+      case 'preference': return 'bg-blue-100 text-blue-800';
+      case 'terminology': return 'bg-green-100 text-green-800';
+      case 'workflow': return 'bg-purple-100 text-purple-800';
+      case 'style': return 'bg-orange-100 text-orange-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'executed': return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'failed': return <XCircle className="h-4 w-4 text-red-500" />;
+      case 'pending': return <Clock className="h-4 w-4 text-amber-500" />;
+      case 'confirmed': return <Clock className="h-4 w-4 text-blue-500" />;
+      case 'cancelled': return <XCircle className="h-4 w-4 text-gray-500" />;
+      default: return <Clock className="h-4 w-4" />;
+    }
+  };
+
+  const getActionIcon = (type: string) => {
+    switch (type) {
+      case 'send_email': return <Send className="h-4 w-4" />;
+      case 'create_deal': return <Users className="h-4 w-4" />;
+      case 'create_ticket': return <FileText className="h-4 w-4" />;
+      case 'create_task': return <Calendar className="h-4 w-4" />;
+      default: return <FileText className="h-4 w-4" />;
+    }
+  };
+
+  const getProviderBadge = (provider: string) => {
+    const icons: Record<string, string> = {
+      google: '🔵',
+      slack: '💬',
+      hubspot: '🟠',
+      quickbooks: '💚',
+      zendesk: '🎫',
+    };
+    return (
+      <Badge variant="outline" className="flex gap-1 items-center font-normal">
+        <span>{icons[provider] || '📦'}</span>
+        {provider}
+      </Badge>
+    );
+  };
+
   const getMemoryTypeColor = (type: string) => {
     switch (type) {
       case 'preference': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
@@ -127,6 +304,11 @@ export default function IntelligenceDashboard() {
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
     }
   };
+
+  const filteredActions = actions.filter(a => {
+    if (actionFilter === 'all') return true;
+    return a.status === actionFilter;
+  });
 
   if (loading) {
     return (
@@ -186,7 +368,7 @@ export default function IntelligenceDashboard() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" /> Overview
           </TabsTrigger>
@@ -195,6 +377,12 @@ export default function IntelligenceDashboard() {
           </TabsTrigger>
           <TabsTrigger value="goals" className="flex items-center gap-2">
             <Target className="h-4 w-4" /> Your Goals
+          </TabsTrigger>
+          <TabsTrigger value="learning" className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" /> Learning & Patterns
+          </TabsTrigger>
+          <TabsTrigger value="activity" className="flex items-center gap-2">
+            <History className="h-4 w-4" /> Activity Log
           </TabsTrigger>
         </TabsList>
 
@@ -400,6 +588,249 @@ export default function IntelligenceDashboard() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Learning Tab */}
+        <TabsContent value="learning" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-purple-100">
+                    <BarChart3 className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{stats?.totalExecutions || 0}</p>
+                    <p className="text-sm text-muted-foreground">Tasks Executed</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-green-100">
+                    <ThumbsUp className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{stats?.positiveRate || 0}%</p>
+                    <p className="text-sm text-muted-foreground">Satisfaction Rate</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-100">
+                    <Sparkles className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{stats?.patternsLearned || 0}</p>
+                    <p className="text-sm text-muted-foreground">Patterns Learned</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-orange-100">
+                    <BookOpen className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{stats?.glossaryTerms || 0}</p>
+                    <p className="text-sm text-muted-foreground">Business Terms</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Tabs defaultValue="patterns" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="patterns">Learned Patterns</TabsTrigger>
+              <TabsTrigger value="glossary">Business Glossary</TabsTrigger>
+            </TabsList>
+            <TabsContent value="patterns">
+              <Card>
+                <CardHeader>
+                  <CardTitle>What Eve Has Learned</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {patterns.length > 0 ? (
+                    <div className="space-y-3">
+                      {patterns.map((p) => (
+                        <div key={p.id} className="flex items-center justify-between p-3 rounded-lg border">
+                          <div className="flex items-center gap-3">
+                            <Badge className={getPatternTypeColor(p.pattern_type)}>{p.pattern_type}</Badge>
+                            <div>
+                              <p className="font-medium">{p.pattern_key}</p>
+                              <p className="text-sm text-muted-foreground">{p.pattern_value}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-medium">{p.confidence}% confident</p>
+                            <p className="text-xs text-muted-foreground">Used {p.usage_count} times</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <WelcomeEmptyState
+                      title="Eve is still learning"
+                      description="Use more tasks to help Eve understand your business preferences."
+                      icon={<Sparkles className="h-8 w-8 text-white" />}
+                      tips={["The more you use Eve, the better she learns", "Give feedback on tasks"]}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="glossary">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Business Glossary</CardTitle>
+                  <Button size="sm" onClick={() => setShowAddTerm(!showAddTerm)}>
+                    <Plus className="h-4 w-4 mr-2" /> Add Term
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {showAddTerm && (
+                    <div className="p-4 border rounded-lg bg-muted/50 space-y-3">
+                      <Input 
+                        placeholder="Term" 
+                        value={newTerm.term} 
+                        onChange={e => setNewTerm({...newTerm, term: e.target.value})} 
+                      />
+                      <Input 
+                        placeholder="Definition" 
+                        value={newTerm.definition} 
+                        onChange={e => setNewTerm({...newTerm, definition: e.target.value})} 
+                      />
+                      <div className="flex gap-2">
+                        <Button onClick={addGlossaryTerm}>Save</Button>
+                        <Button variant="outline" onClick={() => setShowAddTerm(false)}>Cancel</Button>
+                      </div>
+                    </div>
+                  )}
+                  {glossary.length > 0 ? (
+                    <div className="space-y-2">
+                      {glossary.map(t => (
+                        <div key={t.id} className="flex items-center justify-between p-3 rounded-lg border group">
+                          <div>
+                            <p className="font-medium">{t.term}</p>
+                            <p className="text-sm text-muted-foreground">{t.definition}</p>
+                          </div>
+                          <Button variant="ghost" size="sm" className="text-red-500 opacity-0 group-hover:opacity-100" onClick={() => deleteGlossaryTerm(t.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <WelcomeEmptyState
+                      title="No terms yet"
+                      description="Teach Eve your company's terminology."
+                      icon={<BookOpen className="h-8 w-8 text-white" />}
+                      tips={["Add product names", "Add acronyms"]}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+
+        {/* Activity Tab */}
+        <TabsContent value="activity" className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Action History</CardTitle>
+                <CardDescription>Audit trail of Eve's actions across your tools.</CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={fetchAllData}>
+                  <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+                </Button>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" /> Export
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-4">
+                <Tabs value={actionFilter} onValueChange={(v: any) => setActionFilter(v)}>
+                  <TabsList>
+                    <TabsTrigger value="all">All</TabsTrigger>
+                    <TabsTrigger value="executed">Executed</TabsTrigger>
+                    <TabsTrigger value="failed">Failed</TabsTrigger>
+                    <TabsTrigger value="pending">Pending</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+              {filteredActions.length > 0 ? (
+                <div className="space-y-4">
+                  {filteredActions.map((action) => (
+                    <div key={action.id} className="flex items-start justify-between p-4 rounded-lg border hover:bg-muted/30 transition-colors">
+                      <div className="flex gap-4">
+                        <div className={`p-2 rounded-full ${
+                          action.status === 'executed' ? 'bg-green-100 text-green-600' :
+                          action.status === 'failed' ? 'bg-red-100 text-red-600' :
+                          'bg-blue-100 text-blue-600'
+                        }`}>
+                          {getActionIcon(action.action_type)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold capitalize">{action.action_type.replace('_', ' ')}</span>
+                            {getStatusIcon(action.status)}
+                            <span className="text-xs text-muted-foreground">{new Date(action.created_at).toLocaleString()}</span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            {getProviderBadge(action.provider_id)}
+                            <span className="text-xs text-muted-foreground truncate max-w-[300px]">
+                              {JSON.stringify(action.input_data).substring(0, 100)}...
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <Badge variant={action.status === 'executed' ? 'default' : 'secondary'} className="capitalize">{action.status}</Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <WelcomeEmptyState
+                  title="No actions found"
+                  description="Actions you approve will appear here."
+                  icon={<History className="h-8 w-8 text-white" />}
+                />
+              )}
+            </CardContent>
+          </Card>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-sm font-medium text-muted-foreground">Total Success</p>
+                <p className="text-2xl font-bold text-green-600">{actions.filter(a => a.status === 'executed').length}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-sm font-medium text-muted-foreground">Total Failed</p>
+                <p className="text-2xl font-bold text-red-600">{actions.filter(a => a.status === 'failed').length}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-sm font-medium text-muted-foreground">Success Rate</p>
+                <p className="text-2xl font-bold">
+                  {actions.length > 0 ? Math.round((actions.filter(a => a.status === 'executed').length / actions.length) * 100) : 0}%
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { auth } from '@clerk/nextjs/server';
 
 let supabase: SupabaseClient | null = null;
 
@@ -12,12 +13,11 @@ function getSupabase(): SupabaseClient | null {
   return supabase;
 }
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const tenantId = searchParams.get('tenant_id');
+export async function GET(req: NextRequest) {
+  const { userId } = await auth();
 
-  if (!tenantId) {
-    return NextResponse.json({ error: 'tenant_id required' }, { status: 400 });
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const db = getSupabase();
@@ -30,7 +30,7 @@ export async function GET(req: Request) {
     const { data, error } = await db
       .from('business_glossary')
       .select('*')
-      .eq('tenant_id', tenantId)
+      .eq('tenant_id', userId)
       .order('term');
 
     if (error) {
@@ -43,11 +43,17 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
-  const { tenant_id, term, definition, category } = await req.json();
+export async function POST(req: NextRequest) {
+  const { userId } = await auth();
 
-  if (!tenant_id || !term || !definition) {
-    return NextResponse.json({ error: 'tenant_id, term, and definition required' }, { status: 400 });
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { term, definition, category } = await req.json();
+
+  if (!term || !definition) {
+    return NextResponse.json({ error: 'term and definition required' }, { status: 400 });
   }
 
   const db = getSupabase();
@@ -60,7 +66,7 @@ export async function POST(req: Request) {
     const { data, error } = await db
       .from('business_glossary')
       .insert({
-        tenant_id,
+        tenant_id: userId,
         term,
         definition,
         category: category || 'general',

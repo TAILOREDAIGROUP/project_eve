@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -66,19 +67,21 @@ const ENGAGEMENT_OPTIONS: EngagementOption[] = [
 ];
 
 export default function SettingsPage() {
+  const { userId } = useAuth();
   const [currentLevel, setCurrentLevel] = useState<EngagementLevel>(2);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const TENANT_ID = '550e8400-e29b-41d4-a716-446655440000';
-
   useEffect(() => {
-    fetchCurrentLevel();
-  }, []);
+    if (userId) {
+      fetchCurrentLevel();
+    }
+  }, [userId]);
 
   const fetchCurrentLevel = async () => {
+    if (!userId) return;
     try {
-      const res = await fetch(`/api/settings/engagement?user_id=${TENANT_ID}`);
+      const res = await fetch('/api/settings/engagement');
       if (res.ok) {
         const data = await res.json();
         setCurrentLevel(data.engagement_level || 2);
@@ -89,6 +92,7 @@ export default function SettingsPage() {
   };
 
   const updateLevel = async (level: EngagementLevel) => {
+    if (!userId) return;
     setSaving(true);
     setSaved(false);
     
@@ -97,8 +101,6 @@ export default function SettingsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: TENANT_ID,
-          tenant_id: TENANT_ID,
           engagement_level: level,
         }),
       });

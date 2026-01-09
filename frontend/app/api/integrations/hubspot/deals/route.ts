@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Nango } from '@nangohq/node';
+import { auth } from '@clerk/nextjs/server';
 
 const nango = new Nango({ secretKey: process.env.NANGO_SECRET_KEY! });
 
 export async function POST(request: NextRequest) {
   try {
-    const { tenantId } = await request.json();
+    const { userId } = await auth();
 
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Missing tenantId' }, { status: 400 });
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const connectionId = tenantId;
+    const connectionId = userId;
 
     // Check if HubSpot is connected
     try {

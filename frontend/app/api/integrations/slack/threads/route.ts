@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Nango } from '@nangohq/node';
 import OpenAI from 'openai';
+import { auth } from '@clerk/nextjs/server';
 
 const nango = new Nango({ secretKey: process.env.NANGO_SECRET_KEY! });
 const openai = new OpenAI({ 
@@ -11,13 +12,14 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
-    const { tenantId, summarize = true } = await request.json();
+    const { userId } = await auth();
+    const { summarize = true } = await request.json().catch(() => ({}));
 
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Missing tenantId' }, { status: 400 });
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const connectionId = tenantId;
+    const connectionId = userId;
 
     // Check if Slack is connected
     try {

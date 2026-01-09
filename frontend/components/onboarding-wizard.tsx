@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useUser, useAuth } from '@clerk/nextjs';
 import {
   Dialog,
   DialogContent,
@@ -50,12 +51,12 @@ const DEPARTMENTS = [
 ];
 
 export function OnboardingWizard({ open, onComplete }: OnboardingWizardProps) {
+  const { user, isLoaded: userLoaded } = useUser();
+  const { userId } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [engagementLevel, setEngagementLevel] = useState<EngagementLevel>(2);
   const [selectedDepartments, setSelectedDepartments] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
-
-  const TENANT_ID = '550e8400-e29b-41d4-a716-446655440000';
 
   const progress = ((currentStep + 1) / STEPS.length) * 100;
 
@@ -74,16 +75,26 @@ export function OnboardingWizard({ open, onComplete }: OnboardingWizardProps) {
       // Save preferences and complete
       setSaving(true);
       try {
-        // Save engagement level
-        await fetch('/api/settings/engagement', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: TENANT_ID,
-            tenant_id: TENANT_ID,
-            engagement_level: engagementLevel,
-          }),
-        });
+        if (userId) {
+          // Save engagement level
+          await fetch('/api/settings/engagement', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: userId,
+              tenant_id: userId,
+              engagement_level: engagementLevel,
+            }),
+          });
+
+          // Save to Clerk user metadata (persists across devices)
+          await user?.update({
+            unsafeMetadata: {
+              onboardingComplete: true,
+              onboardingCompletedAt: new Date().toISOString(),
+            },
+          });
+        }
 
         // Save onboarding complete flag
         localStorage.setItem('eve-onboarding-complete', 'true');

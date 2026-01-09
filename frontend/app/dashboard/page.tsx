@@ -12,6 +12,7 @@ import { TaskResultActions } from '@/components/task-result-actions';
 import { OnboardingWizard } from '@/components/onboarding-wizard';
 import { useOnboarding } from '@/hooks/use-onboarding';
 import { DEPARTMENTS, Department } from '@/lib/department-tasks';
+import { useAuth } from '@clerk/nextjs';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -27,6 +28,7 @@ interface ActiveTask {
 }
 
 export default function Dashboard() {
+  const { userId } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: 'What are we tackling next?' }
   ]);
@@ -40,8 +42,6 @@ export default function Dashboard() {
   const { isComplete: onboardingComplete, isLoading: onboardingLoading, completeOnboarding } = useOnboarding();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  const TENANT_ID = '550e8400-e29b-41d4-a716-446655440000';
-
   useEffect(() => {
     if (!onboardingLoading && !onboardingComplete) {
       setShowOnboarding(true);
@@ -51,8 +51,9 @@ export default function Dashboard() {
   useEffect(() => {
     // Load custom departments
     async function loadDepartments() {
+      if (!userId) return;
       try {
-        const res = await fetch(`/api/admin/prompts?tenant_id=${TENANT_ID}`);
+        const res = await fetch('/api/admin/prompts');
         if (res.ok) {
           const data = await res.json();
           if (data.departments && data.departments.length > 0) {
@@ -64,7 +65,7 @@ export default function Dashboard() {
       }
     }
     loadDepartments();
-  }, []);
+  }, [userId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -75,7 +76,7 @@ export default function Dashboard() {
   }, [messages]);
 
   const sendMessage = async (content: string, taskType?: string) => {
-    if (!content.trim() || isLoading) return;
+    if (!content.trim() || isLoading || !userId) return;
 
     const userMessage: Message = { role: 'user', content, taskType };
     const newMessages = [...messages, userMessage];
@@ -90,8 +91,7 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: newMessages.map(m => ({ role: m.role, content: m.content })),
-          tenant_id: TENANT_ID,
-          session_id: `session-${TENANT_ID}`,
+          session_id: `session-${userId}`,
         }),
       });
 
@@ -153,12 +153,12 @@ export default function Dashboard() {
   };
 
   const handleFeedback = async (feedback: 'positive' | 'negative') => {
+    if (!userId) return;
     try {
       await fetch('/api/actions/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tenant_id: TENANT_ID,
           feedback,
         }),
       });

@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^0.0.72",
+    "@clerk/nextjs": "^6.36.6",
     "@nangohq/frontend": "^0.69.20",
     "@nangohq/node": "^0.69.20",
     "@radix-ui/react-dialog": "^1.1.15",

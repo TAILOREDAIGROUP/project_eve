@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { auth } from '@clerk/nextjs/server';
 
 let supabase: SupabaseClient | null = null;
 
@@ -12,12 +13,11 @@ function getSupabase(): SupabaseClient | null {
   return supabase;
 }
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const tenantId = searchParams.get('tenant_id');
+export async function GET(req: NextRequest) {
+  const { userId } = await auth();
 
-  if (!tenantId) {
-    return NextResponse.json({ error: 'tenant_id required' }, { status: 400 });
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const db = getSupabase();
@@ -30,7 +30,7 @@ export async function GET(req: Request) {
     const { data, error } = await db
       .from('integrations')
       .select('*')
-      .eq('tenant_id', tenantId);
+      .eq('tenant_id', userId);
 
     if (error) {
       return NextResponse.json({ integrations: [] });

@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { auth } from '@clerk/nextjs/server';
 
 let supabase: SupabaseClient | null = null;
 
@@ -12,12 +13,11 @@ function getSupabase(): SupabaseClient | null {
   return supabase;
 }
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const tenantId = searchParams.get('tenant_id');
+export async function GET(req: NextRequest) {
+  const { userId } = await auth();
 
-  if (!tenantId) {
-    return NextResponse.json({ error: 'tenant_id required' }, { status: 400 });
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const db = getSupabase();
@@ -39,7 +39,7 @@ export async function GET(req: Request) {
     const { data: executions } = await db
       .from('task_executions')
       .select('*')
-      .eq('tenant_id', tenantId);
+      .eq('tenant_id', userId);
 
     const totalExecutions = executions?.length || 0;
     const positiveCount = executions?.filter(e => e.feedback === 'positive').length || 0;
@@ -70,13 +70,13 @@ export async function GET(req: Request) {
     const { count: patternsCount } = await db
       .from('business_patterns')
       .select('*', { count: 'exact', head: true })
-      .eq('tenant_id', tenantId);
+      .eq('tenant_id', userId);
 
     // Get glossary count
     const { count: glossaryCount } = await db
       .from('business_glossary')
       .select('*', { count: 'exact', head: true })
-      .eq('tenant_id', tenantId);
+      .eq('tenant_id', userId);
 
     return NextResponse.json({
       totalExecutions,

@@ -2,6 +2,8 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, Message } from 'ai';
 import { getSupabase } from '@/lib/supabase';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
+import { auth } from '@clerk/nextjs/server';
+import { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
@@ -79,7 +81,13 @@ function getSecurityHeaders() {
   };
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const { userId: clerkUserId } = await auth();
+  
+  if (!clerkUserId) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  }
+
   const supabase = getSupabase();
   const securityHeaders = getSecurityHeaders();
 
@@ -118,7 +126,7 @@ export async function POST(req: Request) {
       return new Response(JSON.stringify({ error: 'Request too large' }), { status: 413 });
     }
 
-    const { messages, tenant_id, session_id: providedSessionId } = await req.json();
+    const { messages, session_id: providedSessionId } = await req.json();
 
     // Validate messages
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -129,8 +137,8 @@ export async function POST(req: Request) {
       return new Response(JSON.stringify({ error: 'Too many messages' }), { status: 400 });
     }
 
-    // Use provided session_id or generate based on tenant_id for persistence
-    const userId = tenant_id || 'default-tenant';
+    // Use clerkUserId for persistence
+    const userId = clerkUserId;
     const sessionId = providedSessionId || `session-${userId}`;
 
     // Rate limiting

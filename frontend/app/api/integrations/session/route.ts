@@ -1,24 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Nango } from '@nangohq/node';
+import { auth, currentUser } from '@clerk/nextjs/server';
 
 const nango = new Nango({ secretKey: process.env.NANGO_SECRET_KEY! });
 
 export async function POST(request: NextRequest) {
   try {
-    const { tenantId, userEmail } = await request.json();
+    const { userId } = await auth();
+    const user = await currentUser();
 
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Missing tenantId' },
-        { status: 400 }
-      );
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Create a connect session for this user
     const session = await nango.createConnectSession({
       end_user: {
-        id: tenantId,
-        email: userEmail || undefined,
+        id: userId,
+        email: user?.emailAddresses[0]?.emailAddress || undefined,
       },
     });
 
