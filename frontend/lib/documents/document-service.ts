@@ -36,11 +36,15 @@ const CHUNK_SIZE = 500; // Target tokens per chunk
 const CHUNK_OVERLAP = 100; // Overlap between chunks
 const CHARS_PER_TOKEN = 4; // Approximate
 
-// Supabase client (use service role for background processing)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Supabase client getter (lazy initialization to avoid build-time errors)
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error('Missing Supabase environment variables');
+  }
+  return createClient(url, key);
+}
 
 /**
  * Parse document content based on file type
@@ -137,13 +141,13 @@ export async function processDocument(documentId: string): Promise<void> {
 
   try {
     // Update status to processing
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('documents')
       .update({ status: 'processing', updated_at: new Date().toISOString() })
       .eq('id', documentId);
 
     // Get document record
-    const { data: doc, error: fetchError } = await supabaseAdmin
+    const { data: doc, error: fetchError } = await getSupabaseAdmin()
       .from('documents')
       .select('*')
       .eq('id', documentId)
@@ -154,7 +158,7 @@ export async function processDocument(documentId: string): Promise<void> {
     }
 
     // Download file from storage
-    const { data: fileData, error: downloadError } = await supabaseAdmin.storage
+    const { data: fileData, error: downloadError } = await getSupabaseAdmin().storage
       .from('documents')
       .download(doc.storage_path);
 
@@ -217,7 +221,7 @@ export async function processDocument(documentId: string): Promise<void> {
     }
 
     // Store chunks in database
-    const { error: insertError } = await supabaseAdmin
+    const { error: insertError } = await getSupabaseAdmin()
       .from('document_chunks')
       .insert(allChunksWithEmbeddings);
 
@@ -226,7 +230,7 @@ export async function processDocument(documentId: string): Promise<void> {
     }
 
     // Update document status to ready
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('documents')
       .update({
         status: 'ready',
@@ -241,7 +245,7 @@ export async function processDocument(documentId: string): Promise<void> {
     console.error(`[DocumentService] Error processing document:`, error);
 
     // Update status to error
-    await supabaseAdmin
+    await getSupabaseAdmin()
       .from('documents')
       .update({
         status: 'error',
@@ -270,7 +274,7 @@ export async function searchDocuments(
 
   // Search using vector similarity
   // Note: This requires the pgvector extension and a custom function in Supabase
-  const { data, error } = await supabaseAdmin.rpc('match_document_chunks', {
+  const { data, error } = await getSupabaseAdmin().rpc('match_document_chunks', {
     query_embedding: queryEmbedding,
     match_user_id: userId,
     match_threshold: similarityThreshold,
@@ -290,7 +294,7 @@ export async function searchDocuments(
  */
 export async function deleteDocument(documentId: string, userId: string): Promise<void> {
   // Get document to verify ownership and get storage path
-  const { data: doc, error: fetchError } = await supabaseAdmin
+  const { data: doc, error: fetchError } = await getSupabaseAdmin()
     .from('documents')
     .select('storage_path')
     .eq('id', documentId)
@@ -302,12 +306,12 @@ export async function deleteDocument(documentId: string, userId: string): Promis
   }
 
   // Delete from storage
-  await supabaseAdmin.storage
+  await getSupabaseAdmin().storage
     .from('documents')
     .remove([doc.storage_path]);
 
   // Delete from database (chunks will cascade delete)
-  await supabaseAdmin
+  await getSupabaseAdmin()
     .from('documents')
     .delete()
     .eq('id', documentId);
