@@ -13,6 +13,7 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserButton } from '@clerk/nextjs';
+import { OfflineBanner } from '@/components/offline-banner';
 
 export default function DashboardLayout({
     children,
@@ -21,6 +22,7 @@ export default function DashboardLayout({
 }) {
     return (
         <div className="flex min-h-screen bg-white">
+            <OfflineBanner />
             {/* Sidebar */}
             <aside className="w-64 border-r border-slate-200 bg-slate-50/50 hidden md:block shrink-0 flex flex-col">
                 <div className="p-8">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Suspense } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,10 @@ import { OnboardingWizard } from '@/components/onboarding-wizard';
 import { useOnboarding } from '@/hooks/use-onboarding';
 import { DEPARTMENTS, Department } from '@/lib/department-tasks';
 import { useAuth } from '@clerk/nextjs';
+import { ErrorBoundary } from '@/components/error-boundary';
+import { ChatErrorFallback } from '@/components/chat-error-fallback';
+import { ChatSkeleton } from '@/components/skeleton-loaders';
+import { ChatInterface } from '@/components/chat-interface';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -35,6 +39,7 @@ export default function Dashboard() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [activeTask, setActiveTask] = useState<ActiveTask | null>(null);
+  const [externalTrigger, setExternalTrigger] = useState<string | null>(null);
   const [departments, setDepartments] = useState<Department[]>(DEPARTMENTS);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -143,13 +148,17 @@ export default function Dashboard() {
       // Show smart form
       setActiveTask({ title, icon, prompt });
     } else {
-      // Send directly
-      sendMessage(prompt, title);
+      // Send directly via ChatInterface trigger
+      setExternalTrigger(prompt);
+      // Also scroll to chat
+      document.getElementById('chat-section')?.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
   const handleSmartFormSubmit = (filledPrompt: string, fieldValues: Record<string, string>) => {
-    sendMessage(filledPrompt, activeTask?.title);
+    setExternalTrigger(filledPrompt);
+    setActiveTask(null);
+    document.getElementById('chat-section')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleFeedback = async (feedback: 'positive' | 'negative') => {
@@ -186,111 +195,53 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50">
-      <OnboardingWizard open={showOnboarding} onComplete={handleOnboardingComplete} />
-      
-      <div className="max-w-6xl mx-auto p-8 space-y-8">
-        {/* Quick Actions */}
-        <QuickActions onRunTask={(prompt) => handleRunTask(prompt)} />
+    <ErrorBoundary
+      onError={(error) => {
+        console.error('[Dashboard] Global error:', error);
+      }}
+    >
+      <div className="min-h-screen bg-slate-50/50">
+        <OnboardingWizard open={showOnboarding} onComplete={handleOnboardingComplete} />
+        
+        <div className="max-w-6xl mx-auto p-8 space-y-8">
+          {/* Quick Actions */}
+          <QuickActions onRunTask={(prompt) => handleRunTask(prompt)} />
 
-        {/* Smart Task Form (when active) */}
-        {activeTask && (
-          <div className="animate-in fade-in slide-in-from-top-4 duration-300">
-            <SmartTaskForm
-              taskTitle={activeTask.title}
-              taskIcon={activeTask.icon}
-              promptTemplate={activeTask.prompt}
-              onSubmit={handleSmartFormSubmit}
-              onCancel={() => setActiveTask(null)}
-            />
-          </div>
-        )}
-
-        {/* Chat Section */}
-        <Card className="border-slate-200 shadow-sm overflow-hidden bg-white">
-          <CardContent className="p-0">
-            <div className="flex items-center gap-2 px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-              <Sparkles className="h-4 w-4 text-slate-400" strokeWidth={1.5} />
-              <h2 className="text-xs font-semibold text-slate-500 tracking-wider uppercase">Executive Assistant</h2>
+          {/* Smart Task Form (when active) */}
+          {activeTask && (
+            <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+              <SmartTaskForm
+                taskTitle={activeTask.title}
+                taskIcon={activeTask.icon}
+                promptTemplate={activeTask.prompt}
+                onSubmit={handleSmartFormSubmit}
+                onCancel={() => setActiveTask(null)}
+              />
             </div>
-            
-            {/* Messages */}
-            <div className="h-96 overflow-y-auto p-6 space-y-6">
-              {messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'} max-w-[85%]`}>
-                    <div
-                      className={`px-4 py-3 rounded-2xl ${
-                        message.role === 'user'
-                          ? 'bg-slate-900 text-white rounded-tr-none'
-                          : 'bg-slate-100 text-slate-700 rounded-tl-none'
-                      }`}
-                    >
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                    </div>
-                    
-                    {message.role === 'assistant' && message.showActions && message.content && (
-                      <div className="w-full animate-in fade-in duration-500">
-                        <TaskResultActions
-                          content={message.content}
-                          taskType={message.taskType}
-                          onFeedback={handleFeedback}
-                          onRegenerate={() => {
-                            const lastUserMessage = messages.filter(m => m.role === 'user').pop();
-                            if (lastUserMessage) {
-                              sendMessage(lastUserMessage.content, lastUserMessage.taskType);
-                            }
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-slate-100 px-4 py-3 rounded-2xl rounded-tl-none">
-                    <div className="flex gap-1.5 py-1">
-                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
+          )}
 
-            {/* Input Section */}
-            <div className="p-4 bg-slate-50/50 border-t border-slate-100">
-              <form onSubmit={handleSubmit} className="flex gap-3 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm focus-within:border-slate-400 transition-all">
-                <Input
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask Eve anything or describe what you need help with..."
-                  disabled={isLoading}
-                  className="flex-1 border-0 shadow-none focus-visible:ring-0 text-sm placeholder:text-slate-400 bg-transparent"
+          {/* Chat Section */}
+          <div id="chat-section">
+            <ErrorBoundary
+              fallback={
+                <ChatErrorFallback
+                  onRetry={() => window.location.reload()}
                 />
-                <Button 
-                  type="submit" 
-                  disabled={isLoading || !input.trim()}
-                  className="bg-slate-900 hover:bg-slate-800 text-white rounded-lg h-9 w-9 p-0 shrink-0"
-                >
-                  <Send className="h-4 w-4" strokeWidth={1.5} />
-                </Button>
-              </form>
-              <div className="mt-2 flex justify-center">
-                <p className="text-[10px] text-slate-400 font-medium">Enterprise Grade AI Assistant • Precision Mode Active</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              }
+              onError={(error) => {
+                console.error('[Dashboard] Chat error:', error);
+              }}
+            >
+              <Suspense fallback={<ChatSkeleton />}>
+                <ChatInterface 
+                  tenantId={userId || 'anonymous'} 
+                  externalTrigger={externalTrigger} 
+                />
+              </Suspense>
+            </ErrorBoundary>
+          </div>
 
-        {/* Department Quick Tasks */}
+          {/* Department Quick Tasks */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <div className="w-1 h-4 bg-slate-900 rounded-full"></div>
@@ -312,5 +263,6 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+  </ErrorBoundary>
   );
 }

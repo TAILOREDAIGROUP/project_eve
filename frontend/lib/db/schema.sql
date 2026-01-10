@@ -1,5 +1,11 @@
 -- ============================================================================
 -- DOMAIN MEMORY FACTORY SCHEMA
+-- SECURITY UPDATE: Row-Level Security (RLS) policies implemented for tenant isolation
+-- DATE: 2026-01-10
+-- CHANGES:
+-- 1. Fixed permissive "Allow all" policies
+-- 2. Enabled RLS on all missing tables (interactions, conversations, memories, proactive_insights, knowledge_graph, integrations)
+-- 3. Implemented user_id/tenant_id based isolation across all tables
 -- ============================================================================
 -- This schema implements persistent memory for the proactive agent system
 -- Tables: user_memory, conversation_sessions, messages, agent_state
@@ -140,6 +146,12 @@ CREATE TABLE IF NOT EXISTS interactions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE interactions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "tenant_isolation_select" ON interactions FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON interactions FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON interactions FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON interactions FOR DELETE USING (auth.uid()::text = user_id);
+
 -- ============================================================================
 -- CONTINUOUS LEARNING TABLES
 -- ============================================================================
@@ -206,9 +218,20 @@ ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
 ALTER TABLE learnings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE goals ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow all feedback" ON feedback FOR ALL USING (true);
-CREATE POLICY "Allow all learnings" ON learnings FOR ALL USING (true);
-CREATE POLICY "Allow all goals" ON goals FOR ALL USING (true);
+CREATE POLICY "tenant_isolation_select" ON feedback FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON feedback FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON feedback FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON feedback FOR DELETE USING (auth.uid()::text = user_id);
+
+CREATE POLICY "tenant_isolation_select" ON learnings FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON learnings FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON learnings FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON learnings FOR DELETE USING (auth.uid()::text = user_id);
+
+CREATE POLICY "tenant_isolation_select" ON goals FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON goals FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON goals FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON goals FOR DELETE USING (auth.uid()::text = user_id);
 
 -- ============================================================================
 -- PERSISTENT MEMORY TABLES (Added for Agentic Fix)
@@ -236,6 +259,19 @@ CREATE TABLE IF NOT EXISTS memories (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE memories ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "tenant_isolation_select" ON conversations FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON conversations FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON conversations FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON conversations FOR DELETE USING (auth.uid()::text = user_id);
+
+CREATE POLICY "tenant_isolation_select" ON memories FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON memories FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON memories FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON memories FOR DELETE USING (auth.uid()::text = user_id);
+
 -- Indexes for fast retrieval
 CREATE INDEX IF NOT EXISTS idx_conversations_session_id ON conversations(session_id);
 CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations(user_id);
@@ -261,7 +297,10 @@ CREATE INDEX IF NOT EXISTS idx_user_settings_user ON user_settings(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_settings_tenant ON user_settings(tenant_id);
 
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all user_settings" ON user_settings FOR ALL USING (true);
+CREATE POLICY "tenant_isolation_select" ON user_settings FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON user_settings FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON user_settings FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON user_settings FOR DELETE USING (auth.uid()::text = user_id);
 
 -- ============================================================================
 -- SELF-REFLECTION TABLE (For quality tracking and improvement)
@@ -289,7 +328,10 @@ CREATE INDEX IF NOT EXISTS idx_reflections_scores ON reflections((scores->>'over
 -- RLS Policy
 ALTER TABLE reflections ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow all reflections" ON reflections FOR ALL USING (true);
+CREATE POLICY "tenant_isolation_select" ON reflections FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON reflections FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON reflections FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON reflections FOR DELETE USING (auth.uid()::text = user_id);
 
 -- ============================================================================
 -- PROACTIVE ENGINE TABLES
@@ -311,6 +353,12 @@ CREATE TABLE IF NOT EXISTS proactive_insights (
   expires_at TIMESTAMPTZ,
   dismissed BOOLEAN DEFAULT FALSE
 );
+
+ALTER TABLE proactive_insights ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "tenant_isolation_select" ON proactive_insights FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON proactive_insights FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON proactive_insights FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON proactive_insights FOR DELETE USING (auth.uid()::text = user_id);
 
 -- Indexes for proactive insights
 CREATE INDEX IF NOT EXISTS idx_proactive_insights_tenant ON proactive_insights(tenant_id);
@@ -349,6 +397,19 @@ CREATE TABLE IF NOT EXISTS knowledge_relationships (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE knowledge_entities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE knowledge_relationships ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "tenant_isolation_select" ON knowledge_entities FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON knowledge_entities FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON knowledge_entities FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON knowledge_entities FOR DELETE USING (auth.uid()::text = user_id);
+
+CREATE POLICY "tenant_isolation_select" ON knowledge_relationships FOR SELECT USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_insert" ON knowledge_relationships FOR INSERT WITH CHECK (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_update" ON knowledge_relationships FOR UPDATE USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_delete" ON knowledge_relationships FOR DELETE USING (auth.uid()::text = tenant_id);
+
 -- Indexes for knowledge graph
 CREATE INDEX IF NOT EXISTS idx_knowledge_entities_tenant ON knowledge_entities(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_knowledge_entities_type ON knowledge_entities(type);
@@ -372,7 +433,10 @@ CREATE TABLE IF NOT EXISTS department_prompts (
 CREATE INDEX IF NOT EXISTS idx_department_prompts_tenant ON department_prompts(tenant_id);
 
 ALTER TABLE department_prompts ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all department_prompts" ON department_prompts FOR ALL USING (true);
+CREATE POLICY "tenant_isolation_select" ON department_prompts FOR SELECT USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_insert" ON department_prompts FOR INSERT WITH CHECK (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_update" ON department_prompts FOR UPDATE USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_delete" ON department_prompts FOR DELETE USING (auth.uid()::text = tenant_id);
 
 -- ============================================================================
 -- INTEGRATIONS & CONNECTORS
@@ -474,11 +538,35 @@ ALTER TABLE synced_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE record_embeddings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE action_logs ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow all integration_providers" ON integration_providers FOR ALL USING (true);
-CREATE POLICY "Allow all integrations" ON integrations FOR ALL USING (true);
-CREATE POLICY "Allow all synced_records" ON synced_records FOR ALL USING (true);
-CREATE POLICY "Allow all record_embeddings" ON record_embeddings FOR ALL USING (true);
-CREATE POLICY "Allow all action_logs" ON action_logs FOR ALL USING (true);
+-- integration_providers: allow select for all authenticated users, restrict write to admin
+CREATE POLICY "tenant_isolation_select" ON integration_providers FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "tenant_isolation_insert" ON integration_providers FOR INSERT WITH CHECK (false);
+CREATE POLICY "tenant_isolation_update" ON integration_providers FOR UPDATE USING (false);
+CREATE POLICY "tenant_isolation_delete" ON integration_providers FOR DELETE USING (false);
+
+-- integrations: isolate by tenant_id
+CREATE POLICY "tenant_isolation_select" ON integrations FOR SELECT USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_insert" ON integrations FOR INSERT WITH CHECK (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_update" ON integrations FOR UPDATE USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_delete" ON integrations FOR DELETE USING (auth.uid()::text = tenant_id);
+
+-- synced_records: isolate by tenant_id
+CREATE POLICY "tenant_isolation_select" ON synced_records FOR SELECT USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_insert" ON synced_records FOR INSERT WITH CHECK (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_update" ON synced_records FOR UPDATE USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_delete" ON synced_records FOR DELETE USING (auth.uid()::text = tenant_id);
+
+-- record_embeddings: isolate by tenant_id
+CREATE POLICY "tenant_isolation_select" ON record_embeddings FOR SELECT USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_insert" ON record_embeddings FOR INSERT WITH CHECK (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_update" ON record_embeddings FOR UPDATE USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_delete" ON record_embeddings FOR DELETE USING (auth.uid()::text = tenant_id);
+
+-- action_logs: isolate by tenant_id
+CREATE POLICY "tenant_isolation_select" ON action_logs FOR SELECT USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_insert" ON action_logs FOR INSERT WITH CHECK (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_update" ON action_logs FOR UPDATE USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_delete" ON action_logs FOR DELETE USING (auth.uid()::text = tenant_id);
 
 -- Seed default providers
 INSERT INTO integration_providers (id, name, icon, description, category, auth_type, scopes) VALUES
@@ -554,6 +642,100 @@ ALTER TABLE task_executions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business_patterns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE business_glossary ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow all task_executions" ON task_executions FOR ALL USING (true);
-CREATE POLICY "Allow all business_patterns" ON business_patterns FOR ALL USING (true);
-CREATE POLICY "Allow all business_glossary" ON business_glossary FOR ALL USING (true);
+-- task_executions: isolate by tenant_id
+CREATE POLICY "tenant_isolation_select" ON task_executions FOR SELECT USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_insert" ON task_executions FOR INSERT WITH CHECK (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_update" ON task_executions FOR UPDATE USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_delete" ON task_executions FOR DELETE USING (auth.uid()::text = tenant_id);
+
+-- business_patterns: isolate by tenant_id
+CREATE POLICY "tenant_isolation_select" ON business_patterns FOR SELECT USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_insert" ON business_patterns FOR INSERT WITH CHECK (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_update" ON business_patterns FOR UPDATE USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_delete" ON business_patterns FOR DELETE USING (auth.uid()::text = tenant_id);
+
+-- business_glossary: isolate by tenant_id
+CREATE POLICY "tenant_isolation_select" ON business_glossary FOR SELECT USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_insert" ON business_glossary FOR INSERT WITH CHECK (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_update" ON business_glossary FOR UPDATE USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_delete" ON business_glossary FOR DELETE USING (auth.uid()::text = tenant_id);
+
+-- ============================================================================
+-- DOCUMENT STORAGE & RAG
+-- ============================================================================
+
+-- Documents table (tracks uploaded files)
+CREATE TABLE IF NOT EXISTS documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  original_filename TEXT NOT NULL,
+  file_type TEXT NOT NULL, -- pdf, docx, txt, csv, md
+  file_size INTEGER NOT NULL, -- bytes
+  storage_path TEXT NOT NULL, -- path in Supabase Storage
+  status TEXT DEFAULT 'pending', -- pending, processing, ready, error
+  error_message TEXT,
+  chunk_count INTEGER DEFAULT 0,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Document chunks for RAG retrieval
+CREATE TABLE IF NOT EXISTS document_chunks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
+  tenant_id TEXT NOT NULL,
+  content TEXT NOT NULL,
+  embedding vector(1536), -- OpenAI text-embedding-3-small dimension
+  chunk_index INTEGER NOT NULL,
+  token_count INTEGER,
+  metadata JSONB DEFAULT '{}', -- page number, section, etc.
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_documents_user ON documents(user_id);
+CREATE INDEX IF NOT EXISTS idx_documents_tenant ON documents(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_documents_status ON documents(status);
+CREATE INDEX IF NOT EXISTS idx_document_chunks_document ON document_chunks(document_id);
+CREATE INDEX IF NOT EXISTS idx_document_chunks_user ON document_chunks(user_id);
+CREATE INDEX IF NOT EXISTS idx_document_chunks_tenant ON document_chunks(tenant_id);
+
+-- Vector similarity search index (using ivfflat for performance)
+CREATE INDEX IF NOT EXISTS idx_document_chunks_embedding ON document_chunks 
+  USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+
+-- RLS Policies
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE document_chunks ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "tenant_isolation_select" ON documents;
+DROP POLICY IF EXISTS "tenant_isolation_insert" ON documents;
+DROP POLICY IF EXISTS "tenant_isolation_update" ON documents;
+DROP POLICY IF EXISTS "tenant_isolation_delete" ON documents;
+
+CREATE POLICY "tenant_isolation_select" ON documents 
+  FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON documents 
+  FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON documents 
+  FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON documents 
+  FOR DELETE USING (auth.uid()::text = user_id);
+
+DROP POLICY IF EXISTS "tenant_isolation_select" ON document_chunks;
+DROP POLICY IF EXISTS "tenant_isolation_insert" ON document_chunks;
+DROP POLICY IF EXISTS "tenant_isolation_update" ON document_chunks;
+DROP POLICY IF EXISTS "tenant_isolation_delete" ON document_chunks;
+
+CREATE POLICY "tenant_isolation_select" ON document_chunks 
+  FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON document_chunks 
+  FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON document_chunks 
+  FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON document_chunks 
+  FOR DELETE USING (auth.uid()::text = user_id);

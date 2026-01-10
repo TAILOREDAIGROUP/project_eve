@@ -4,6 +4,7 @@ import { getSupabase } from '@/lib/supabase';
 import { checkRateLimit } from '@/lib/security/rate-limiter';
 import { auth } from '@clerk/nextjs/server';
 import { NextRequest } from 'next/server';
+import { searchDocuments } from '@/lib/documents/document-service';
 
 export const runtime = 'edge';
 
@@ -160,6 +161,31 @@ export async function POST(req: NextRequest) {
     const userQuery = lastMessage.content;
 
     // =========================================================================
+    // STEP 0.5: RAG - SEARCH FOR RELEVANT DOCUMENT CONTEXT
+    // =========================================================================
+    let ragContext = '';
+    try {
+      const relevantChunks = await searchDocuments(userId, userQuery, 5, 0.7);
+      
+      if (relevantChunks.length > 0) {
+        ragContext = `
+
+=== RELEVANT CONTEXT FROM USER'S DOCUMENTS ===
+${relevantChunks.map((chunk, i) => `
+[Source ${i + 1}: ${chunk.metadata?.filename || 'Unknown'}]
+${chunk.content}
+`).join('\n')}
+=== END DOCUMENT CONTEXT ===
+
+When using information from the above context, cite the source like [Source 1].
+`;
+      }
+    } catch (err) {
+      console.error('[Chat] RAG search error:', err);
+      // Continue without RAG context
+    }
+
+    // =========================================================================
     // STEP 1: RETRIEVE STORED MEMORIES FOR THIS USER
     // =========================================================================
     let memories: StoredMemory[] = [];
@@ -281,7 +307,8 @@ Use the real-time data above to answer questions about their calendar, Slack, or
 ${memoryContext}${historyContext}${integrationContext}
 
 ## CURRENT INTERACTION
-Respond helpfully to the user's message. If they've shared information before, use it to personalize your response.`;
+Respond helpfully to the user's message. If they've shared information before, use it to personalize your response.
+${ragContext}`;
 
     // =========================================================================
     // STEP 4: MERGE CONVERSATION HISTORY WITH CURRENT MESSAGES
@@ -337,6 +364,7 @@ Respond helpfully to the user's message. If they've shared information before, u
       model: openrouter('openai/gpt-4o-mini'),
       system: systemPrompt,
       messages: contextMessages,
+      abortSignal: AbortSignal.timeout(30000),
       onFinish: async (event) => {
         if (!event.text || !event.text.trim()) {
           console.log('[Save] Skipping empty assistant response');

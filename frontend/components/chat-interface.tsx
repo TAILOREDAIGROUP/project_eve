@@ -37,6 +37,7 @@ export function ChatInterface({ tenantId, externalTrigger }: ChatInterfaceProps)
     ]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
+    const [apiError, setApiError] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const hasTriggeredRef = useRef<string | null>(null);
 
@@ -59,25 +60,26 @@ export function ChatInterface({ tenantId, externalTrigger }: ChatInterfaceProps)
 
         if (!textToSend.trim() || loading) return;
 
+        setApiError(null);
         const userMsg: Message = { role: 'user', content: textToSend };
         setMessages(prev => [...prev, userMsg]);
         setInput('');
         setLoading(true);
 
         try {
-            // Updated to relative path
             const res = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    messages: [...messages, userMsg], // Send history + new message
+                    messages: [...messages, userMsg],
                     tenant_id: tenantId
-                })
+                }),
+                signal: AbortSignal.timeout(60000),
             });
 
             if (!res.ok) {
-                const errorText = await res.text();
-                throw new Error(errorText || "Failed to fetch response");
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || `Request failed: ${res.status}`);
             }
 
             // Stream Handling
@@ -103,8 +105,20 @@ export function ChatInterface({ tenantId, externalTrigger }: ChatInterfaceProps)
             }
 
         } catch (error: any) {
-            console.error(error);
-            setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${error.message || 'Something went wrong.'}` }]);
+            console.error('[Chat] Error:', error);
+            
+            if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+                setApiError('Request timed out. Please try again.');
+            } else if (error.message?.includes('fetch')) {
+                setApiError('Unable to connect. Please check your internet connection.');
+            } else {
+                setApiError(error.message || 'An unexpected error occurred.');
+            }
+
+            setMessages(prev => [...prev, { 
+                role: 'assistant', 
+                content: "I'm having trouble responding right now. Please try again in a moment." 
+            }]);
         } finally {
             setLoading(false);
         }
@@ -181,6 +195,18 @@ export function ChatInterface({ tenantId, externalTrigger }: ChatInterfaceProps)
                     )}
                     <div ref={scrollRef} />
                 </div>
+
+                {apiError && (
+                    <div className="mx-4 mb-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-600 dark:text-red-400">
+                        {apiError}
+                        <button
+                            onClick={() => setApiError(null)}
+                            className="ml-2 underline hover:no-underline"
+                        >
+                            Dismiss
+                        </button>
+                    </div>
+                )}
 
                 {/* Input Area */}
                 <div className="p-4 border-t bg-white">

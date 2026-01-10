@@ -1,5 +1,11 @@
 -- ============================================================================
 -- PROJECT EVE - COMPLETE AGENTIC AI DATABASE SCHEMA
+-- SECURITY UPDATE: Row-Level Security (RLS) policies implemented for tenant isolation
+-- DATE: 2026-01-10
+-- CHANGES:
+-- 1. Enabled RLS on all tables
+-- 2. Implemented user_id based isolation for all agentic tables
+-- 3. Implemented tenant_id based isolation for relationship tables
 -- ============================================================================
 
 -- ============================================================================
@@ -195,3 +201,79 @@ CREATE TABLE IF NOT EXISTS knowledge_relationships (
 CREATE INDEX IF NOT EXISTS idx_knowledge_relationships_tenant ON knowledge_relationships(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_knowledge_relationships_source ON knowledge_relationships(source_entity_id);
 CREATE INDEX IF NOT EXISTS idx_knowledge_relationships_target ON knowledge_relationships(target_entity_id);
+
+-- ============================================================================
+-- ROW LEVEL SECURITY (RLS) POLICIES
+-- ============================================================================
+
+-- Enable RLS on all tables
+ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE memories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reflections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
+ALTER TABLE learnings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE goals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE proactive_insights ENABLE ROW LEVEL SECURITY;
+ALTER TABLE knowledge_entities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE knowledge_relationships ENABLE ROW LEVEL SECURITY;
+
+-- user_settings policies
+CREATE POLICY "tenant_isolation_select" ON user_settings FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON user_settings FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON user_settings FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON user_settings FOR DELETE USING (auth.uid()::text = user_id);
+
+-- conversations policies
+CREATE POLICY "tenant_isolation_select" ON conversations FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON conversations FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON conversations FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON conversations FOR DELETE USING (auth.uid()::text = user_id);
+
+-- memories policies
+CREATE POLICY "tenant_isolation_select" ON memories FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON memories FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON memories FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON memories FOR DELETE USING (auth.uid()::text = user_id);
+
+-- reflections policies
+CREATE POLICY "tenant_isolation_select" ON reflections FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON reflections FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON reflections FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON reflections FOR DELETE USING (auth.uid()::text = user_id);
+
+-- feedback policies
+CREATE POLICY "tenant_isolation_select" ON feedback FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON feedback FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON feedback FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON feedback FOR DELETE USING (auth.uid()::text = user_id);
+
+-- learnings policies
+CREATE POLICY "tenant_isolation_select" ON learnings FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON learnings FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON learnings FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON learnings FOR DELETE USING (auth.uid()::text = user_id);
+
+-- goals policies
+CREATE POLICY "tenant_isolation_select" ON goals FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON goals FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON goals FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON goals FOR DELETE USING (auth.uid()::text = user_id);
+
+-- proactive_insights policies
+CREATE POLICY "tenant_isolation_select" ON proactive_insights FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON proactive_insights FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON proactive_insights FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON proactive_insights FOR DELETE USING (auth.uid()::text = user_id);
+
+-- knowledge_entities policies
+CREATE POLICY "tenant_isolation_select" ON knowledge_entities FOR SELECT USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_insert" ON knowledge_entities FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_update" ON knowledge_entities FOR UPDATE USING (auth.uid()::text = user_id);
+CREATE POLICY "tenant_isolation_delete" ON knowledge_entities FOR DELETE USING (auth.uid()::text = user_id);
+
+-- knowledge_relationships policies (uses tenant_id)
+CREATE POLICY "tenant_isolation_select" ON knowledge_relationships FOR SELECT USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_insert" ON knowledge_relationships FOR INSERT WITH CHECK (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_update" ON knowledge_relationships FOR UPDATE USING (auth.uid()::text = tenant_id);
+CREATE POLICY "tenant_isolation_delete" ON knowledge_relationships FOR DELETE USING (auth.uid()::text = tenant_id);
